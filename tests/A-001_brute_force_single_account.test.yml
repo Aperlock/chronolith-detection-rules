@@ -1,0 +1,38 @@
+# Test cases for A-001 — Brute Force: Single Account.
+# Synthetic data only. Events are oldest-first; timestamps are relative seconds.
+rule: A-001_brute_force_single_account
+cases:
+  - name: ten failures against one account inside the window fires
+    should_fire: true
+    events:
+      - { t: 0,   EventID: 4625, TargetUserName: jsmith, IpAddress: 10.0.0.9 }
+      - { t: 12,  EventID: 4625, TargetUserName: jsmith, IpAddress: 10.0.0.9 }
+      - { t: 25,  EventID: 4625, TargetUserName: jsmith, IpAddress: 10.0.0.9 }
+      - { t: 38,  EventID: 4625, TargetUserName: jsmith, IpAddress: 10.0.0.9 }
+      - { t: 51,  EventID: 4625, TargetUserName: jsmith, IpAddress: 10.0.0.9 }
+      - { t: 66,  EventID: 4625, TargetUserName: jsmith, IpAddress: 10.0.0.9 }
+      - { t: 80,  EventID: 4625, TargetUserName: jsmith, IpAddress: 10.0.0.9 }
+      - { t: 95,  EventID: 4625, TargetUserName: jsmith, IpAddress: 10.0.0.9 }
+      - { t: 110, EventID: 4625, TargetUserName: jsmith, IpAddress: 10.0.0.9 }
+      - { t: 128, EventID: 4625, TargetUserName: jsmith, IpAddress: 10.0.0.9 }
+
+  - name: nine failures stays under the threshold
+    should_fire: false
+    events:
+      - { t: 0,  EventID: 4625, TargetUserName: jsmith, IpAddress: 10.0.0.9 }
+      - { t: 12, EventID: 4625, TargetUserName: jsmith, IpAddress: 10.0.0.9 }
+      - { t: 25, EventID: 4625, TargetUserName: jsmith, IpAddress: 10.0.0.9 }
+      - { t: 38, EventID: 4625, TargetUserName: jsmith, IpAddress: 10.0.0.9 }
+      - { t: 51, EventID: 4625, TargetUserName: jsmith, IpAddress: 10.0.0.9 }
+      - { t: 66, EventID: 4625, TargetUserName: jsmith, IpAddress: 10.0.0.9 }
+      - { t: 80, EventID: 4625, TargetUserName: jsmith, IpAddress: 10.0.0.9 }
+      - { t: 95, EventID: 4625, TargetUserName: jsmith, IpAddress: 10.0.0.9 }
+      - { t: 110, EventID: 4625, TargetUserName: jsmith, IpAddress: 10.0.0.9 }
+
+  - name: failures spread across different accounts do not fire this rule
+    should_fire: false   # this is password spray (A-003), not single-account brute force
+    events:
+      - { t: 0,  EventID: 4625, TargetUserName: alice, IpAddress: 10.0.0.9 }
+      - { t: 10, EventID: 4625, TargetUserName: bob,   IpAddress: 10.0.0.9 }
+      - { t: 20, EventID: 4625, TargetUserName: carol, IpAddress: 10.0.0.9 }
+      - { t: 30, EventID: 4625, TargetUserName: dave,  IpAddress: 10.0.0.9 }

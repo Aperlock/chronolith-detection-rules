@@ -1,0 +1,48 @@
+# A-002 — Lateral Movement: Multi-Host Authentication
+title: Lateral Movement - Multi-Host Authentication
+name: lateral_movement_multi_host
+id: b1e6c2a0-1f34-4c7a-9d21-0a1b2c3d4002
+status: stable
+description: >
+  One source account successfully authenticates to many distinct hosts in a
+  short window — the movement pattern of a compromised credential being walked
+  across the estate. Distinct-host count is the signal, not raw event volume.
+references:
+  - https://attack.mitre.org/techniques/T1021/
+author: Aperlock
+date: 2026-05-01
+tags:
+  - attack.lateral-movement
+  - attack.t1021
+logsource:
+  product: windows
+  service: security
+detection:
+  selection:
+    EventID:
+      - 4624   # successful logon
+      - 4648   # logon using explicit credentials
+  condition: selection
+fields:
+  - TargetUserName
+  - IpAddress
+  - WorkstationName
+falsepositives:
+  - Admin or helpdesk workstations that legitimately touch many hosts (scope these out)
+  - Vulnerability scanners / management agents authenticating broadly
+level: high
+---
+# Threshold: same source account reaching >= 5 distinct destination hosts / 10 min.
+title: Lateral Movement - Multi-Host Authentication (threshold)
+id: b1e6c2a0-1f34-4c7a-9d21-0a1b2c3d4102
+status: stable
+correlation:
+  type: value_count
+  rules:
+    - lateral_movement_multi_host
+  group-by:
+    - TargetUserName
+  timespan: 10m
+  condition:
+    field: WorkstationName
+    gte: 5

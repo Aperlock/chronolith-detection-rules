@@ -1,0 +1,46 @@
+# A-001 — Brute Force: Single Account
+title: Brute Force - Single Account
+name: brute_force_single_account
+id: b1e6c2a0-1f34-4c7a-9d21-0a1b2c3d4001
+status: stable
+description: >
+  A single account receives many failed interactive/network logons in a short
+  window — the classic password-guessing pattern against one target. High value
+  for lean SME teams: it's the earliest, cheapest signal of an account under
+  attack.
+references:
+  - https://attack.mitre.org/techniques/T1110/001/
+author: Aperlock
+date: 2026-05-01
+tags:
+  - attack.credential-access
+  - attack.t1110.001
+logsource:
+  product: windows
+  service: security
+detection:
+  selection:
+    EventID: 4625
+  condition: selection
+fields:
+  - TargetUserName
+  - IpAddress
+  - WorkstationName
+falsepositives:
+  - User who genuinely forgot their password (usually well under the threshold)
+  - A service or scheduled task running with a stale password — check the logon type
+level: high
+---
+# Threshold: 10 failures for the same account within 5 minutes.
+title: Brute Force - Single Account (threshold)
+id: b1e6c2a0-1f34-4c7a-9d21-0a1b2c3d4101
+status: stable
+correlation:
+  type: event_count
+  rules:
+    - brute_force_single_account
+  group-by:
+    - TargetUserName
+  timespan: 5m
+  condition:
+    gte: 10

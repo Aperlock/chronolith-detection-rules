@@ -1,0 +1,51 @@
+# D-001 — Ransomware Staging: Mass File Modification
+title: Mass File Modification - Ransomware Staging
+name: mass_file_modification
+id: b1e6c2a0-1f34-4c7a-9d21-0a1b2c3d4007
+status: experimental
+description: >
+  A single user or process modifies a very large number of files across
+  directories in seconds — the characteristic footprint of ransomware encryption
+  in progress. Time-to-isolate is everything once this fires.
+references:
+  - https://attack.mitre.org/techniques/T1486/
+author: Aperlock
+date: 2026-05-20
+tags:
+  - attack.impact
+  - attack.t1486
+logsource:
+  product: windows
+  service: security
+detection:
+  selection:
+    EventID: 4663                 # object access: file modification (SACL required)
+    AccessMask: '0x2'             # WRITE
+  condition: selection
+fields:
+  - SubjectUserName
+  - ProcessName
+  - ObjectName
+falsepositives:
+  - Backup jobs, AV full scans, and software updates touching many files —
+    exclusion lists for backup service accounts and known AV processes are
+    essential before enabling this on a file server
+level: critical
+# Requires file-object auditing (SACLs) on monitored shares. Ship DISABLED by
+# default — noisy without per-environment tuning. Becomes more reliable with the
+# Chronolith agent's file-system monitoring.
+---
+# Threshold: same user/process >= 200 file modifications / 60 seconds.
+title: Mass File Modification - Ransomware Staging (threshold)
+id: b1e6c2a0-1f34-4c7a-9d21-0a1b2c3d4107
+status: experimental
+correlation:
+  type: event_count
+  rules:
+    - mass_file_modification
+  group-by:
+    - SubjectUserName
+    - ProcessName
+  timespan: 60s
+  condition:
+    gte: 200

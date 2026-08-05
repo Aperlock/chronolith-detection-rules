@@ -1,0 +1,39 @@
+# Test cases for C-002 — Volume Shadow Copy Deletion / Recovery Disabled.
+# Single-occurrence rule: one matching event fires it. Synthetic data only.
+rule: C-002_shadow_copy_deletion
+cases:
+  - name: vssadmin delete shadows fires
+    should_fire: true
+    events:
+      - EventID: 4688
+        Image: 'C:\Windows\System32\vssadmin.exe'
+        CommandLine: 'vssadmin.exe delete shadows /all /quiet'
+        ComputerName: WS-01
+        SubjectUserName: jsmith
+
+  - name: wmic shadowcopy delete fires
+    should_fire: true
+    events:
+      - EventID: 4688
+        Image: 'C:\Windows\System32\wbem\wmic.exe'
+        CommandLine: 'wmic.exe shadowcopy delete'
+        ComputerName: FS-01
+        SubjectUserName: SYSTEM
+
+  - name: bcdedit disabling recovery fires
+    should_fire: true
+    events:
+      - EventID: 4688
+        Image: 'C:\Windows\System32\bcdedit.exe'
+        CommandLine: 'bcdedit /set {default} recoveryenabled no'
+        ComputerName: WS-01
+        SubjectUserName: jsmith
+
+  - name: benign vssadmin list does not fire
+    should_fire: false
+    events:
+      - EventID: 4688
+        Image: 'C:\Windows\System32\vssadmin.exe'
+        CommandLine: 'vssadmin.exe list shadows'
+        ComputerName: WS-01
+        SubjectUserName: admin

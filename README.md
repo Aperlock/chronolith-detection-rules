@@ -21,7 +21,7 @@ launch.
 
 ## How to contribute
 
-1. **Fork this repository.** Clone locally.000
+1. **Fork this repository.** Clone locally.
 2. **Write your rule** using the schema in `RULE_SCHEMA.md` (coming soon). Map
    to MITRE ATT&CK where applicable. Include test cases in `/tests/`.
 3. **Submit a pull request.** We review for false positive rate, performance

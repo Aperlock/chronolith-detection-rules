@@ -1,0 +1,37 @@
+# B-001 — New Domain Admin (tier-0 group membership added)
+title: Account Added to Tier-0 Privileged Group
+name: new_tier0_admin
+id: b1e6c2a0-1f34-4c7a-9d21-0a1b2c3d4004
+status: stable
+description: >
+  An account is added to Domain Admins, Enterprise Admins, or Schema Admins. Any
+  single occurrence is significant — tier-0 group changes should be rare, planned,
+  and tied to a change ticket. Unauthorized additions are a critical incident.
+references:
+  - https://attack.mitre.org/techniques/T1136/002/
+  - https://attack.mitre.org/techniques/T1098/
+author: Aperlock
+date: 2026-05-15
+tags:
+  - attack.persistence
+  - attack.t1136.002
+  - attack.t1098
+logsource:
+  product: windows
+  service: security
+detection:
+  selection:
+    EventID: 4728          # member added to a security-enabled global group
+    TargetUserName:
+      - 'Domain Admins'
+      - 'Enterprise Admins'
+      - 'Schema Admins'
+  condition: selection
+fields:
+  - MemberName
+  - SubjectUserName
+  - TargetUserName
+falsepositives:
+  - A genuine, authorized IT promotion — should always carry a change ticket
+level: critical
+# Single occurrence — no correlation document needed.

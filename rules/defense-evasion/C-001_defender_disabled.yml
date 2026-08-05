@@ -1,0 +1,38 @@
+# C-001 — Windows Defender Disabled or Tampered
+title: Windows Defender Disabled or Tampered
+name: defender_disabled
+id: b1e6c2a0-1f34-4c7a-9d21-0a1b2c3d4005
+status: stable
+description: >
+  Windows Defender's antimalware service is stopped, or real-time protection is
+  turned off via policy registry. One of the single most reliable ransomware
+  precursors — attackers blind the endpoint before encrypting.
+references:
+  - https://attack.mitre.org/techniques/T1562/001/
+author: Aperlock
+date: 2026-05-15
+tags:
+  - attack.defense-evasion
+  - attack.t1562.001
+logsource:
+  product: windows
+  service: system
+detection:
+  selection_service:
+    EventID: 7036                       # Service Control Manager: state change
+    param1: 'Windows Defender Antivirus Service'
+    param2: 'stopped'
+  selection_policy:
+    EventID: 4657                       # registry value modified
+    ObjectName|contains: '\Policies\Microsoft\Windows Defender'
+    ObjectValueName: 'DisableAntiSpyware'
+    NewValue: '1'
+  condition: selection_service or selection_policy
+fields:
+  - ComputerName
+  - SubjectUserName
+falsepositives:
+  - IT deploying an approved third-party AV/EDR, which disables Defender by design —
+    scope those hosts out via an exclusion list
+level: critical
+# Single occurrence — treat as an active incident. No correlation document.

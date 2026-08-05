@@ -1,0 +1,41 @@
+# F-001 — M365: External Email Forwarding Rule Created
+title: M365 External Email Forwarding Rule Created
+name: m365_external_forwarding_rule
+id: b1e6c2a0-1f34-4c7a-9d21-0a1b2c3d4008
+status: stable
+description: >
+  An inbox rule is created or modified to forward or redirect mail to an external
+  address — a common, quiet email-exfiltration persistence mechanism after a
+  mailbox compromise. High relevance for law-firm and financial-advisory tenants.
+references:
+  - https://attack.mitre.org/techniques/T1114/003/
+author: Aperlock
+date: 2026-05-20
+tags:
+  - attack.collection
+  - attack.exfiltration
+  - attack.t1114.003
+logsource:
+  product: m365
+  service: audit
+detection:
+  selection_op:
+    Operation:
+      - 'New-InboxRule'
+      - 'Set-InboxRule'
+  selection_external:
+    - ForwardTo|contains: '@'
+    - RedirectTo|contains: '@'
+  condition: selection_op and selection_external
+fields:
+  - UserId
+  - ForwardTo
+  - RedirectTo
+falsepositives:
+  - A user forwarding to their own personal address — a policy violation regardless,
+    but confirm intent before escalating to incident
+  - Approved, IT-configured forwarding (should be documented)
+level: high
+# Note for reviewers/tuning: an "external" destination is best decided against the
+# tenant's own accepted domains; treat any non-internal recipient as external.
+# Single occurrence — no correlation document.
