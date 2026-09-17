@@ -1,0 +1,49 @@
+# Test cases for A-008 — AS-REP Roasting.
+# Synthetic data only. Events are oldest-first; t is relative seconds.
+rule: A-008_asrep_roasting
+cases:
+  - name: single TGT for a pre-auth-disabled account using RC4 fires (high-signal single hit)
+    should_fire: true
+    events:
+      - { t: 0, EventID: 4768, TargetUserName: jsmith, ServiceName: krbtgt, PreAuthType: '0', TicketEncryptionType: '0x17', IpAddress: 10.0.0.9 }
+
+  - name: normal TGT with encrypted-timestamp pre-auth does not fire
+    should_fire: false   # PreAuthType 2 = pre-auth used (the healthy default)
+    events:
+      - { t: 0, EventID: 4768, TargetUserName: jsmith, ServiceName: krbtgt, PreAuthType: '2', TicketEncryptionType: '0x17', IpAddress: 10.0.0.9 }
+
+  - name: pre-auth-off but AES-encrypted TGT does not fire this RC4 rule
+    should_fire: false   # TicketEncryptionType 0x12 = AES256, not the crackable RC4 pattern
+    events:
+      - { t: 0, EventID: 4768, TargetUserName: jsmith, ServiceName: krbtgt, PreAuthType: '0', TicketEncryptionType: '0x12', IpAddress: 10.0.0.9 }
+
+  - name: machine account with pre-auth off is excluded
+    should_fire: false   # TargetUserName ends with $ — computer account, filtered out
+    events:
+      - { t: 0, EventID: 4768, TargetUserName: WS-01$, ServiceName: krbtgt, PreAuthType: '0', TicketEncryptionType: '0x17', IpAddress: 10.0.0.9 }
+
+  - name: one source requests roastable TGTs for six distinct accounts in the window fires (sweep)
+    should_fire: true
+    events_generator:
+      count: 6
+      window_seconds: 300
+      template:
+        EventID: 4768
+        ServiceName: krbtgt
+        PreAuthType: '0'
+        TicketEncryptionType: '0x17'
+        IpAddress: 10.0.0.9
+        TargetUserName: 'user-{{i}}'
+
+  - name: four distinct roastable accounts stays under the sweep threshold
+    should_fire: false
+    events_generator:
+      count: 4
+      window_seconds: 300
+      template:
+        EventID: 4768
+        ServiceName: krbtgt
+        PreAuthType: '0'
+        TicketEncryptionType: '0x17'
+        IpAddress: 10.0.0.9
+        TargetUserName: 'user-{{i}}'

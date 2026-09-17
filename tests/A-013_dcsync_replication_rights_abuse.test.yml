@@ -1,0 +1,66 @@
+rule: A-013_dcsync_replication_rights_abuse
+cases:
+  - name: User account requests DS-Replication-Get-Changes-All (DCSync) - fires
+    should_fire: true
+    events:
+      - EventID: 4662
+        ObjectServer: 'DS'
+        SubjectUserName: 'jsmith'
+        SubjectDomainName: 'EXAMPLE'
+        SubjectUserSid: 'S-1-5-21-1111111111-2222222222-3333333333-1104'
+        SubjectLogonId: '0x3e9a1'
+        ObjectName: '%{19995e5f-9c07-11d1-f79f-00c04fc2dcd2}'
+        Properties: 'Control Access {1131f6ad-9c07-11d1-f79f-00c04fc2dcd2} DS-Replication-Get-Changes-All'
+        AccessMask: '0x100'
+
+  - name: Non-DC service account requests DS-Replication-Get-Changes - fires
+    should_fire: true
+    events:
+      - EventID: 4662
+        ObjectServer: 'DS'
+        SubjectUserName: 'svc-report'
+        SubjectDomainName: 'EXAMPLE'
+        SubjectUserSid: 'S-1-5-21-1111111111-2222222222-3333333333-1520'
+        SubjectLogonId: '0x7f2c0'
+        ObjectName: 'DC=example,DC=local'
+        Properties: '{1131f6aa-9c07-11d1-f79f-00c04fc2dcd2}'
+        AccessMask: '0x100'
+
+  - name: Legitimate DC machine account replicating - no fire
+    should_fire: false
+    events:
+      - EventID: 4662
+        ObjectServer: 'DS'
+        SubjectUserName: 'DC-01$'
+        SubjectDomainName: 'EXAMPLE'
+        SubjectUserSid: 'S-1-5-21-1111111111-2222222222-3333333333-1001'
+        SubjectLogonId: '0x3e7'
+        ObjectName: 'DC=example,DC=local'
+        Properties: '{1131f6ad-9c07-11d1-f79f-00c04fc2dcd2}'
+        AccessMask: '0x100'
+
+  - name: gMSA-backed sync service (ends in $) is excluded by design - no fire
+    should_fire: false
+    events:
+      - EventID: 4662
+        ObjectServer: 'DS'
+        SubjectUserName: 'svc-adsync$'
+        SubjectDomainName: 'EXAMPLE'
+        SubjectUserSid: 'S-1-5-21-1111111111-2222222222-3333333333-1610'
+        SubjectLogonId: '0x9a11'
+        ObjectName: 'DC=example,DC=local'
+        Properties: 'Control Access {1131f6ad-9c07-11d1-f79f-00c04fc2dcd2} DS-Replication-Get-Changes-All'
+        AccessMask: '0x100'
+
+  - name: User account touches a non-replication directory property - no fire
+    should_fire: false
+    events:
+      - EventID: 4662
+        ObjectServer: 'DS'
+        SubjectUserName: 'jsmith'
+        SubjectDomainName: 'EXAMPLE'
+        SubjectUserSid: 'S-1-5-21-1111111111-2222222222-3333333333-1104'
+        SubjectLogonId: '0x3e9a1'
+        ObjectName: 'CN=jsmith,OU=Users,DC=example,DC=local'
+        Properties: 'Write Property {bf967a0e-0de6-11d0-a285-00aa003049e2} Description'
+        AccessMask: '0x20'

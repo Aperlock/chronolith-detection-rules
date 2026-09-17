@@ -1,0 +1,11 @@
+# Tests for C-013 — Payload Decode via certutil. Synthetic data only.
+rule: C-013_certutil_payload_decode
+cases:
+  - name: certutil -decode fires
+    should_fire: true
+    events:
+      - { Image: 'C:\Windows\System32\certutil.exe', CommandLine: 'certutil -decode C:\Temp\a.b64 C:\Temp\a.exe', ParentImage: 'C:\Windows\System32\cmd.exe', SubjectUserName: attacker }
+  - name: certutil hashing a file does not fire
+    should_fire: false
+    events:
+      - { Image: 'C:\Windows\System32\certutil.exe', CommandLine: 'certutil -hashfile C:\Temp\a.exe SHA256', ParentImage: 'C:\Windows\System32\cmd.exe', SubjectUserName: jsmith }

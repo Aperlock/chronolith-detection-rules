@@ -1,0 +1,11 @@
+# Tests for LM-005 — PsExec-style Remote Service Install. Synthetic data only.
+rule: LM-005_psexec_remote_service
+cases:
+  - name: PSEXESVC service install fires
+    should_fire: true
+    events:
+      - { EventID: 7045, ServiceName: 'PSEXESVC', ImagePath: 'C:\Windows\PSEXESVC.exe', AccountName: 'LocalSystem' }
+  - name: a normal service install does not fire
+    should_fire: false
+    events:
+      - { EventID: 7045, ServiceName: 'MapsBroker', ImagePath: 'C:\Windows\System32\svchost.exe -k NetworkService', AccountName: 'NT AUTHORITY\NetworkService' }

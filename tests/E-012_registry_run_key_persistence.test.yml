@@ -1,0 +1,11 @@
+# Tests for E-012 — Registry Run-Key Persistence. Synthetic data only.
+rule: E-012_registry_run_key_persistence
+cases:
+  - name: reg add to CurrentVersion Run fires
+    should_fire: true
+    events:
+      - { Image: 'C:\Windows\System32\reg.exe', CommandLine: 'reg add HKCU\Software\Microsoft\Windows\CurrentVersion\Run /v Updater /d "C:\\Users\\Public\\a.exe"', ParentImage: 'C:\Windows\System32\cmd.exe', SubjectUserName: attacker }
+  - name: reg query of the Run key does not fire
+    should_fire: false
+    events:
+      - { Image: 'C:\Windows\System32\reg.exe', CommandLine: 'reg query HKCU\Software\Microsoft\Windows\CurrentVersion\Run', ParentImage: 'C:\Windows\System32\cmd.exe', SubjectUserName: jsmith }

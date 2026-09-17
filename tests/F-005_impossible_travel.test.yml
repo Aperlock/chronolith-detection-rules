@@ -1,0 +1,12 @@
+# Tests for F-005 — M365 Impossible Travel. Rule-level test validates the base
+# selection (successful sign-in); the geo/velocity check is engine-side. Synthetic only.
+rule: F-005_impossible_travel
+cases:
+  - name: successful sign-in matches the base selection
+    should_fire: true
+    events:
+      - { ResultType: 0, UserId: jsmith@example.local, IPAddress: 203.0.113.10, LocationDetails: 'US/New York' }
+  - name: failed sign-in does not match
+    should_fire: false
+    events:
+      - { ResultType: 50126, UserId: jsmith@example.local, IPAddress: 203.0.113.10, LocationDetails: 'US/New York' }

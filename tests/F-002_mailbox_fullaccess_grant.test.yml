@@ -1,0 +1,15 @@
+# Tests for F-002 — M365 Mailbox Full-Access Permission Granted. Synthetic data only.
+rule: F-002_mailbox_fullaccess_grant
+cases:
+  - name: full-access grant to another user fires
+    should_fire: true
+    events:
+      - { Operation: 'Add-MailboxPermission', AccessRights: 'FullAccess', UserId: attacker@example.local, ObjectId: ceo@example.local }
+  - name: read-only permission does not fire
+    should_fire: false
+    events:
+      - { Operation: 'Add-MailboxPermission', AccessRights: 'ReadPermission', UserId: assistant@example.local, ObjectId: exec@example.local }
+  - name: system self-grant is filtered out
+    should_fire: false
+    events:
+      - { Operation: 'Add-MailboxPermission', AccessRights: 'FullAccess', UserId: 'NT AUTHORITY\SYSTEM', ObjectId: svc@example.local }

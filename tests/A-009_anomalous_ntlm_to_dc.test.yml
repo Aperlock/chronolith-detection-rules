@@ -1,0 +1,60 @@
+# Test cases for A-009 — Anomalous NTLM Authentication to Domain Controller.
+# Synthetic data only. Threshold is >= 20 NTLM validations (4776) from one
+# source WorkstationName inside a 10-minute window.
+rule: A-009_anomalous_ntlm_to_dc
+cases:
+  - name: 25 NTLM validations from one source machine in 10 min fires
+    should_fire: true
+    events_generator:
+      count: 25
+      window_seconds: 480
+      template:
+        EventID: 4776
+        PackageName: 'MICROSOFT_AUTHENTICATION_PACKAGE_V1_0'
+        WorkstationName: WS-01
+        TargetUserName: 'jsmith-{{i}}'
+        Status: '0x0'
+
+  - name: only 12 NTLM validations stays under the threshold
+    should_fire: false
+    events_generator:
+      count: 12
+      window_seconds: 480
+      template:
+        EventID: 4776
+        PackageName: 'MICROSOFT_AUTHENTICATION_PACKAGE_V1_0'
+        WorkstationName: WS-01
+        TargetUserName: 'jsmith-{{i}}'
+        Status: '0x0'
+
+  - name: high volume but wrong auth package (not MSV1_0) does not match the selection
+    should_fire: false
+    events_generator:
+      count: 30
+      window_seconds: 480
+      template:
+        EventID: 4776
+        PackageName: 'KERBEROS'
+        WorkstationName: WS-01
+        TargetUserName: 'jsmith-{{i}}'
+        Status: '0x0'
+
+  - name: failed-status NTLM validations also count toward the burst
+    should_fire: true
+    events_generator:
+      count: 22
+      window_seconds: 480
+      template:
+        EventID: 4776
+        PackageName: 'MICROSOFT_AUTHENTICATION_PACKAGE_V1_0'
+        WorkstationName: WS-07
+        TargetUserName: 'svc-app-{{i}}'
+        Status: '0xC0000064'
+
+  - name: NTLM volume spread thin across many sources does not concentrate on one machine
+    should_fire: false
+    events:
+      - { t: 0,   EventID: 4776, PackageName: 'MICROSOFT_AUTHENTICATION_PACKAGE_V1_0', WorkstationName: WS-01, TargetUserName: jsmith, Status: '0x0' }
+      - { t: 30,  EventID: 4776, PackageName: 'MICROSOFT_AUTHENTICATION_PACKAGE_V1_0', WorkstationName: WS-02, TargetUserName: jsmith, Status: '0x0' }
+      - { t: 60,  EventID: 4776, PackageName: 'MICROSOFT_AUTHENTICATION_PACKAGE_V1_0', WorkstationName: FS-01, TargetUserName: jsmith, Status: '0x0' }
+      - { t: 90,  EventID: 4776, PackageName: 'MICROSOFT_AUTHENTICATION_PACKAGE_V1_0', WorkstationName: WS-01, TargetUserName: jsmith, Status: '0x0' }

@@ -1,0 +1,11 @@
+# Tests for B-007 — Sensitive Privilege Assigned at Logon. Synthetic data only.
+rule: B-007_sensitive_privilege_assigned
+cases:
+  - name: logon granted SeDebugPrivilege fires
+    should_fire: true
+    events:
+      - { EventID: 4672, SubjectUserName: jsmith, PrivilegeList: 'SeDebugPrivilege SeChangeNotifyPrivilege' }
+  - name: logon with only benign privileges does not fire
+    should_fire: false
+    events:
+      - { EventID: 4672, SubjectUserName: jsmith, PrivilegeList: 'SeChangeNotifyPrivilege SeShutdownPrivilege' }

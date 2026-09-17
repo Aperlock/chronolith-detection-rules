@@ -1,0 +1,18 @@
+# Tests for F-006 — M365 Mass Mailbox Item Access. Synthetic data only.
+rule: F-006_mass_mail_access
+cases:
+  - name: 500+ mailbox item accesses by one account in the hour fires
+    should_fire: true
+    events_generator:
+      count: 520
+      window_seconds: 3000
+      template:
+        Operation: MailItemsAccessed
+        UserId: jsmith@example.local
+        MailboxOwnerUPN: jsmith@example.local
+        InternetMessageId: 'msg-{{i}}'
+  - name: a handful of accesses does not fire
+    should_fire: false
+    events:
+      - { Operation: MailItemsAccessed, UserId: jsmith@example.local, MailboxOwnerUPN: jsmith@example.local }
+      - { Operation: FolderBind, UserId: jsmith@example.local, MailboxOwnerUPN: jsmith@example.local }

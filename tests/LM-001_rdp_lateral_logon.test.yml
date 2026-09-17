@@ -1,0 +1,11 @@
+# Tests for LM-001 — RDP Interactive Logon (base selection; anomaly scoring is engine-side). Synthetic only.
+rule: LM-001_rdp_lateral_logon
+cases:
+  - name: RDP logon (Type 10) matches
+    should_fire: true
+    events:
+      - { EventID: 4624, LogonType: 10, TargetUserName: jsmith, IpAddress: 10.0.0.9, WorkstationName: WS-07 }
+  - name: local interactive logon (Type 2) does not match
+    should_fire: false
+    events:
+      - { EventID: 4624, LogonType: 2, TargetUserName: jsmith, IpAddress: '-', WorkstationName: WS-07 }

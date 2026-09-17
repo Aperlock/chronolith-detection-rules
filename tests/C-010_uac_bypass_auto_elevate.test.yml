@@ -1,0 +1,11 @@
+# Tests for C-010 — UAC Bypass via Auto-Elevating Binary. Synthetic data only.
+rule: C-010_uac_bypass_auto_elevate
+cases:
+  - name: fodhelper spawning powershell fires
+    should_fire: true
+    events:
+      - { Image: 'C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe', ParentImage: 'C:\Windows\System32\fodhelper.exe', CommandLine: 'powershell -w hidden -c ...', SubjectUserName: attacker }
+  - name: eventvwr opening its normal MMC child does not fire
+    should_fire: false
+    events:
+      - { Image: 'C:\Windows\System32\mmc.exe', ParentImage: 'C:\Windows\System32\eventvwr.exe', CommandLine: 'mmc.exe eventvwr.msc', SubjectUserName: jsmith }

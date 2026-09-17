@@ -1,0 +1,15 @@
+# Tests for FS-003 — Privileged Share Access by a Machine/Service Account. Synthetic only.
+rule: FS-003_privileged_share_machine_account
+cases:
+  - name: a machine account reading the Matters share fires
+    should_fire: true
+    events:
+      - { EventID: 5145, ShareName: '\\FS-01\Matters', AccessMask: '0x1', SubjectUserName: 'WS-07$' }
+  - name: a normal user reading the Matters share does not fire (handled by FS-001, not this rule)
+    should_fire: false
+    events:
+      - { EventID: 5145, ShareName: '\\FS-01\Matters', AccessMask: '0x1', SubjectUserName: jsmith }
+  - name: a machine account reading a non-privileged share does not fire
+    should_fire: false
+    events:
+      - { EventID: 5145, ShareName: '\\FS-01\Public', AccessMask: '0x1', SubjectUserName: 'WS-07$' }

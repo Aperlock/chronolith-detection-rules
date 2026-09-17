@@ -1,0 +1,50 @@
+rule: D-003_mass_rename_ransomware_extensions
+cases:
+  - name: single user encrypts many distinct files to .lockbit within window fires
+    should_fire: true
+    events_generator:
+      count: 40
+      window_seconds: 120
+      template:
+        EventID: 4663
+        ObjectType: File
+        AccessMask: '0x10000'
+        SubjectUserName: jsmith
+        ProcessName: 'C:\Users\jsmith\AppData\Local\Temp\svc.exe'
+        ObjectName: '\FS-01\share\finance\report-{{i}}.xlsx.lockbit'
+
+  - name: below threshold handful of encrypted files does not fire
+    should_fire: false
+    events_generator:
+      count: 5
+      window_seconds: 120
+      template:
+        EventID: 4663
+        ObjectType: File
+        AccessMask: '0x2'
+        SubjectUserName: jsmith
+        ProcessName: 'C:\Windows\explorer.exe'
+        ObjectName: '\FS-01\share\archive\old-{{i}}.zip.encrypted'
+
+  - name: high volume normal writes to non-ransomware extensions does not fire
+    should_fire: false
+    events_generator:
+      count: 60
+      window_seconds: 120
+      template:
+        EventID: 4663
+        ObjectType: File
+        AccessMask: '0x2'
+        SubjectUserName: jsmith
+        ProcessName: 'C:\Program Files\Microsoft Office\root\Office16\WINWORD.EXE'
+        ObjectName: '\FS-01\share\legal\brief-{{i}}.docx'
+
+  - name: read-only access to ransomware-named files does not fire
+    should_fire: false
+    events:
+      - EventID: 4663
+        ObjectType: File
+        AccessMask: '0x1'
+        SubjectUserName: jsmith
+        ProcessName: 'C:\Windows\System32\notepad.exe'
+        ObjectName: '\FS-01\share\finance\readme.locked'

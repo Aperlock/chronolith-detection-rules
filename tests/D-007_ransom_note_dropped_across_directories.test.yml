@@ -1,0 +1,42 @@
+# Test cases for D-007 — Ransom Note Dropped Across Directories.
+# Synthetic data only — no real users, hosts, shares, or paths.
+rule: D-007_ransom_note_dropped_across_directories
+cases:
+  - name: One process drops README.txt across 20 distinct directories — fires
+    should_fire: true
+    events_generator:
+      count: 20
+      window_seconds: 60
+      template:
+        EventID: 4663
+        ObjectType: File
+        SubjectUserName: jsmith
+        ProcessName: 'C:\Users\jsmith\AppData\Local\Temp\locker.exe'
+        ProcessId: 4242
+        AccessMask: '0x2'
+        ObjectName: 'D:\Shares\dept-{{i}}\README.txt'
+
+  - name: Single legitimate readme.txt written to one folder — no fan-out, does not fire
+    should_fire: false
+    events:
+      - EventID: 4663
+        ObjectType: File
+        SubjectUserName: jsmith
+        ProcessName: 'C:\Program Files\ExampleApp\setup.exe'
+        ProcessId: 1010
+        AccessMask: '0x2'
+        ObjectName: 'C:\Program Files\ExampleApp\README.txt'
+
+  - name: Note filename but non-note extension (.log) — selection does not match, does not fire
+    should_fire: false
+    events_generator:
+      count: 20
+      window_seconds: 60
+      template:
+        EventID: 4663
+        ObjectType: File
+        SubjectUserName: jsmith
+        ProcessName: 'C:\Windows\System32\svc.exe'
+        ProcessId: 2020
+        AccessMask: '0x2'
+        ObjectName: 'D:\Shares\dept-{{i}}\README.log'

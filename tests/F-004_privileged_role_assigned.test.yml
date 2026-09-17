@@ -1,0 +1,11 @@
+# Tests for F-004 — M365 Privileged Admin Role Assigned. Synthetic data only.
+rule: F-004_privileged_role_assigned
+cases:
+  - name: add member to Global Administrator fires
+    should_fire: true
+    events:
+      - { Operation: 'Add member to role', ModifiedProperties: 'Company Administrator', UserId: attacker@example.local, ObjectId: jsmith@example.local }
+  - name: add member to a non-privileged role does not fire
+    should_fire: false
+    events:
+      - { Operation: 'Add member to role', ModifiedProperties: 'Message Center Reader', UserId: admin@example.local, ObjectId: jsmith@example.local }

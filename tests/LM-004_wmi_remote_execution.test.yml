@@ -1,0 +1,15 @@
+# Tests for LM-004 — WMI Remote Execution. Synthetic data only.
+rule: LM-004_wmi_remote_execution
+cases:
+  - name: process spawned by WmiPrvSE fires
+    should_fire: true
+    events:
+      - { Image: 'C:\Windows\System32\cmd.exe', ParentImage: 'C:\Windows\System32\wbem\WmiPrvSE.exe', CommandLine: 'cmd /c whoami', SubjectUserName: attacker }
+  - name: wmic process call create fires
+    should_fire: true
+    events:
+      - { Image: 'C:\Windows\System32\wbem\wmic.exe', ParentImage: 'C:\Windows\System32\cmd.exe', CommandLine: 'wmic /node:HOST-2 process call create "cmd /c payload.exe"', SubjectUserName: attacker }
+  - name: benign process does not fire
+    should_fire: false
+    events:
+      - { Image: 'C:\Windows\System32\notepad.exe', ParentImage: 'C:\Windows\explorer.exe', CommandLine: 'notepad', SubjectUserName: jsmith }

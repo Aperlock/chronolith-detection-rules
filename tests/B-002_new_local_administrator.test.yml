@@ -1,0 +1,11 @@
+# Tests for B-002 — New Local Administrator Account. Synthetic data only.
+rule: B-002_new_local_administrator
+cases:
+  - name: member added to local Administrators fires
+    should_fire: true
+    events:
+      - { EventID: 4732, TargetUserName: 'Administrators', MemberName: 'CN=jsmith,OU=Users,DC=example,DC=local', SubjectUserName: attacker, ComputerName: WS-01 }
+  - name: member added to a non-admin local group does not fire
+    should_fire: false
+    events:
+      - { EventID: 4732, TargetUserName: 'Remote Desktop Users', MemberName: 'CN=jsmith', SubjectUserName: helpdesk, ComputerName: WS-01 }

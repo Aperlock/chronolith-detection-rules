@@ -1,0 +1,22 @@
+# Tests for LM-002 — SMB Administrative Share Access. Synthetic data only.
+rule: LM-002_smb_admin_share_access
+cases:
+  - name: one account hitting C$ on 5+ hosts in the window fires
+    should_fire: true
+    events_generator:
+      count: 6
+      window_seconds: 300
+      template:
+        EventID: 5140
+        ShareName: '\\HOST-{{i}}\C$'
+        SubjectUserName: attacker
+        IpAddress: 10.0.0.9
+        ComputerName: 'HOST-{{i}}'
+  - name: a single admin-share access does not fire the fan-out threshold
+    should_fire: false
+    events:
+      - { EventID: 5140, ShareName: '\\FS-01\C$', SubjectUserName: sccm-svc, IpAddress: 10.0.0.5, ComputerName: FS-01 }
+  - name: access to a normal (non-admin) share does not match
+    should_fire: false
+    events:
+      - { EventID: 5140, ShareName: '\\FS-01\Data', SubjectUserName: jsmith, IpAddress: 10.0.0.9, ComputerName: FS-01 }

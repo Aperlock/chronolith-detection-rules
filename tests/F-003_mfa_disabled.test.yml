@@ -1,0 +1,15 @@
+# Tests for F-003 — M365 MFA Disabled for a User. Synthetic data only.
+rule: F-003_mfa_disabled
+cases:
+  - name: explicit disable-strong-auth fires
+    should_fire: true
+    events:
+      - { Operation: 'Disable Strong Authentication', UserId: admin@example.local, ObjectId: jsmith@example.local }
+  - name: update-user clearing StrongAuthenticationRequirement fires
+    should_fire: true
+    events:
+      - { Operation: 'Update user', ModifiedProperties: 'StrongAuthenticationRequirement', UserId: helpdesk@example.local, ObjectId: jsmith@example.local }
+  - name: unrelated update-user does not fire
+    should_fire: false
+    events:
+      - { Operation: 'Update user', ModifiedProperties: 'DisplayName', UserId: admin@example.local, ObjectId: jsmith@example.local }

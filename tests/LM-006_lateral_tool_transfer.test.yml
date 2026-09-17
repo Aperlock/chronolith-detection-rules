@@ -1,0 +1,15 @@
+# Tests for LM-006 — Lateral Tool Transfer to a Remote Admin Share. Synthetic data only.
+rule: LM-006_lateral_tool_transfer
+cases:
+  - name: writing an .exe to a remote C$ fires
+    should_fire: true
+    events:
+      - { EventID: 5145, ShareName: '\\HOST-2\C$', AccessMask: '0x2', RelativeTargetName: 'Windows\Temp\payload.exe', SubjectUserName: attacker, IpAddress: 10.0.0.9 }
+  - name: reading a document from C$ does not fire (not a write, not an executable)
+    should_fire: false
+    events:
+      - { EventID: 5145, ShareName: '\\HOST-2\C$', AccessMask: '0x1', RelativeTargetName: 'Users\jsmith\notes.docx', SubjectUserName: jsmith, IpAddress: 10.0.0.9 }
+  - name: writing a document (non-executable) to C$ does not fire
+    should_fire: false
+    events:
+      - { EventID: 5145, ShareName: '\\HOST-2\C$', AccessMask: '0x2', RelativeTargetName: 'Temp\report.docx', SubjectUserName: jsmith, IpAddress: 10.0.0.9 }

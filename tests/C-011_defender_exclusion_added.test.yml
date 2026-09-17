@@ -1,0 +1,15 @@
+# Tests for C-011 — Windows Defender Exclusion Added. Synthetic data only.
+rule: C-011_defender_exclusion_added
+cases:
+  - name: Add-MpPreference exclusion path fires
+    should_fire: true
+    events:
+      - { Image: 'C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe', CommandLine: 'powershell Add-MpPreference -ExclusionPath C:\Users\Public', ParentImage: 'C:\Windows\System32\cmd.exe', SubjectUserName: attacker }
+  - name: reg add to Defender Exclusions fires
+    should_fire: true
+    events:
+      - { Image: 'C:\Windows\System32\reg.exe', CommandLine: 'reg add "HKLM\SOFTWARE\Microsoft\Windows Defender\Exclusions\Paths" /v C:\Temp /t REG_DWORD /d 0', ParentImage: 'C:\Windows\System32\cmd.exe', SubjectUserName: attacker }
+  - name: unrelated MpPreference query does not fire
+    should_fire: false
+    events:
+      - { Image: 'C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe', CommandLine: 'powershell Get-MpComputerStatus', ParentImage: 'C:\Windows\explorer.exe', SubjectUserName: jsmith }

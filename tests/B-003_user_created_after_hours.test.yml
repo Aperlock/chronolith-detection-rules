@@ -1,0 +1,11 @@
+# Tests for B-003 — User Account Created (base selection; after-hours is engine-side). Synthetic only.
+rule: B-003_user_created_after_hours
+cases:
+  - name: a user account creation matches the base selection
+    should_fire: true
+    events:
+      - { EventID: 4720, TargetUserName: backdoor, SubjectUserName: attacker, ComputerName: DC-01 }
+  - name: an account deletion does not match this rule
+    should_fire: false
+    events:
+      - { EventID: 4726, TargetUserName: olduser, SubjectUserName: admin, ComputerName: DC-01 }

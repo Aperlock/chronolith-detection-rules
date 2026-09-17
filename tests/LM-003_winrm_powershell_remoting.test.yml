@@ -1,0 +1,11 @@
+# Tests for LM-003 — WinRM / PowerShell Remoting Execution. Synthetic data only.
+rule: LM-003_winrm_powershell_remoting
+cases:
+  - name: process spawned by wsmprovhost fires
+    should_fire: true
+    events:
+      - { Image: 'C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe', ParentImage: 'C:\Windows\System32\wsmprovhost.exe', CommandLine: 'powershell -enc ...', SubjectUserName: attacker }
+  - name: normal local process does not fire
+    should_fire: false
+    events:
+      - { Image: 'C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe', ParentImage: 'C:\Windows\explorer.exe', CommandLine: 'powershell Get-Process', SubjectUserName: jsmith }

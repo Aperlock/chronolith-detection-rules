@@ -1,0 +1,71 @@
+rule: C-007_firewall_tamper_protection_disabled
+cases:
+  - name: netsh disables firewall for all profiles
+    should_fire: true
+    events:
+      - EventID: 4688
+        Image: 'C:\Windows\System32\netsh.exe'
+        CommandLine: 'netsh advfirewall set allprofiles state off'
+        ParentImage: 'C:\Windows\System32\cmd.exe'
+        User: 'EXAMPLE\jsmith'
+        Computer: 'WS-01'
+
+  - name: powershell disables firewall profile
+    should_fire: true
+    events:
+      - EventID: 4688
+        Image: 'C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe'
+        CommandLine: 'powershell -Command Set-NetFirewallProfile -Profile Domain,Public,Private -Enabled False'
+        ParentImage: 'C:\Windows\System32\cmd.exe'
+        User: 'EXAMPLE\jsmith'
+        Computer: 'WS-01'
+
+  - name: defender real-time monitoring disabled
+    should_fire: true
+    events:
+      - EventID: 4688
+        Image: 'C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe'
+        CommandLine: 'powershell Set-MpPreference -DisableRealtimeMonitoring $true'
+        ParentImage: 'C:\Windows\explorer.exe'
+        User: 'EXAMPLE\jsmith'
+        Computer: 'WS-01'
+
+  - name: tamper protection disabled via registry
+    should_fire: true
+    events:
+      - EventID: 4688
+        Image: 'C:\Windows\System32\reg.exe'
+        CommandLine: 'reg add "HKLM\\SOFTWARE\\Microsoft\\Windows Defender\\Features" /v TamperProtection /t REG_DWORD /d 0 /f'
+        ParentImage: 'C:\Windows\System32\cmd.exe'
+        User: 'EXAMPLE\jsmith'
+        Computer: 'WS-01'
+
+  - name: viewing firewall state is benign
+    should_fire: false
+    events:
+      - EventID: 4688
+        Image: 'C:\Windows\System32\netsh.exe'
+        CommandLine: 'netsh advfirewall show allprofiles state'
+        ParentImage: 'C:\Windows\System32\cmd.exe'
+        User: 'EXAMPLE\jsmith'
+        Computer: 'WS-01'
+
+  - name: enabling firewall profile is benign
+    should_fire: false
+    events:
+      - EventID: 4688
+        Image: 'C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe'
+        CommandLine: 'powershell Set-NetFirewallProfile -Profile Domain -Enabled True'
+        ParentImage: 'C:\Windows\System32\cmd.exe'
+        User: 'EXAMPLE\jsmith'
+        Computer: 'WS-01'
+
+  - name: setting an unrelated firewall rule is benign
+    should_fire: false
+    events:
+      - EventID: 4688
+        Image: 'C:\Windows\System32\netsh.exe'
+        CommandLine: 'netsh advfirewall firewall add rule name=AllowRDP dir=in action=allow protocol=TCP localport=3389'
+        ParentImage: 'C:\Windows\System32\cmd.exe'
+        User: 'EXAMPLE\jsmith'
+        Computer: 'WS-01'

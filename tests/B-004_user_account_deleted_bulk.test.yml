@@ -1,0 +1,13 @@
+# Tests for B-004 — User Account Deleted (bulk). Synthetic data only.
+rule: B-004_user_account_deleted_bulk
+cases:
+  - name: three deletions by one actor in the window fires
+    should_fire: true
+    events:
+      - { EventID: 4726, TargetUserName: user1, SubjectUserName: attacker }
+      - { EventID: 4726, TargetUserName: user2, SubjectUserName: attacker }
+      - { EventID: 4726, TargetUserName: user3, SubjectUserName: attacker }
+  - name: a single deletion does not fire the bulk alert
+    should_fire: false
+    events:
+      - { EventID: 4726, TargetUserName: leaver, SubjectUserName: helpdesk }

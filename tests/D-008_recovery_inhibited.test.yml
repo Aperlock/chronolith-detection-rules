@@ -1,0 +1,56 @@
+rule: D-008_recovery_inhibited
+cases:
+  - name: reagentc disables the Windows Recovery Environment
+    should_fire: true
+    events:
+      - EventID: 4688
+        Image: 'C:\Windows\System32\reagentc.exe'
+        CommandLine: 'reagentc  /disable'
+        ParentImage: 'C:\Windows\System32\cmd.exe'
+        ParentCommandLine: 'cmd.exe /c reagentc /disable'
+        SubjectUserName: 'jsmith'
+        Computer: 'WS-01'
+
+  - name: vssadmin resize shadowstorage to a tiny size purges shadows
+    should_fire: true
+    events:
+      - EventID: 4688
+        Image: 'C:\Windows\System32\vssadmin.exe'
+        CommandLine: 'vssadmin resize shadowstorage /for=C: /on=C: /maxsize=401MB'
+        ParentImage: 'C:\Windows\System32\cmd.exe'
+        ParentCommandLine: 'cmd.exe /c vssadmin resize shadowstorage /for=C: /on=C: /maxsize=401MB'
+        SubjectUserName: 'jsmith'
+        Computer: 'FS-01'
+
+  - name: wbadmin deletes system-state backups
+    should_fire: true
+    events:
+      - EventID: 4688
+        Image: 'C:\Windows\System32\wbadmin.exe'
+        CommandLine: 'wbadmin delete systemstatebackup -keepVersions:0 -quiet'
+        ParentImage: 'C:\Windows\System32\powershell.exe'
+        ParentCommandLine: 'powershell.exe -Command wbadmin delete systemstatebackup'
+        SubjectUserName: 'jsmith'
+        Computer: 'FS-01'
+
+  - name: vssadmin delete shadows is C-002 territory not this rule
+    should_fire: false
+    events:
+      - EventID: 4688
+        Image: 'C:\Windows\System32\vssadmin.exe'
+        CommandLine: 'vssadmin delete shadows /all /quiet'
+        ParentImage: 'C:\Windows\System32\cmd.exe'
+        ParentCommandLine: 'cmd.exe /c vssadmin delete shadows /all /quiet'
+        SubjectUserName: 'jsmith'
+        Computer: 'WS-01'
+
+  - name: benign vssadmin list shadowstorage query does not fire
+    should_fire: false
+    events:
+      - EventID: 4688
+        Image: 'C:\Windows\System32\vssadmin.exe'
+        CommandLine: 'vssadmin list shadowstorage'
+        ParentImage: 'C:\Windows\System32\cmd.exe'
+        ParentCommandLine: 'cmd.exe /c vssadmin list shadowstorage'
+        SubjectUserName: 'jsmith'
+        Computer: 'WS-01'

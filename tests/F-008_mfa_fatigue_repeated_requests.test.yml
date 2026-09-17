@@ -1,0 +1,66 @@
+# Test cases for F-008 — MFA Fatigue / Push-Bombing (Repeated MFA Requests).
+# Synthetic data only — no real users, tenants, or IPs.
+rule: F-008_mfa_fatigue_repeated_requests
+cases:
+  - name: push_bombing_burst_six_distinct_mfa_denials_in_window
+    should_fire: true
+    notes: 6 distinct CorrelationId 500121 denials for one UserId in 5 min (>= 5 threshold).
+    events_generator:
+      count: 6
+      window_seconds: 300
+      template:
+        AuthenticationRequirement: multiFactorAuthentication
+        ResultType: 500121
+        ResultDescription: 'MFA denied; user declined the authentication'
+        UserId: 'a1b2c3d4-0000-4000-8000-000000000009'
+        UserPrincipalName: 'jsmith@example.local'
+        IPAddress: '10.0.0.9'
+        AppDisplayName: 'Office 365 Exchange Online'
+        CorrelationId: 'corr-{{i}}'
+
+  - name: single_declined_prompt_below_threshold
+    should_fire: false
+    events:
+      - AuthenticationRequirement: multiFactorAuthentication
+        ResultType: 500121
+        ResultDescription: 'MFA denied; user declined the authentication'
+        UserId: 'a1b2c3d4-0000-4000-8000-000000000009'
+        UserPrincipalName: 'jsmith@example.local'
+        IPAddress: '10.0.0.9'
+        AppDisplayName: 'Office 365 Exchange Online'
+        CorrelationId: 'corr-single-1'
+
+  - name: successful_mfa_signins_do_not_match_selection
+    should_fire: false
+    notes: ResultType 0 is a clean success, not a denial — must not match even at volume.
+    events_generator:
+      count: 6
+      window_seconds: 300
+      template:
+        AuthenticationRequirement: multiFactorAuthentication
+        ResultType: 0
+        ResultDescription: 'Success'
+        UserId: 'a1b2c3d4-0000-4000-8000-000000000009'
+        UserPrincipalName: 'jsmith@example.local'
+        IPAddress: '10.0.0.9'
+        AppDisplayName: 'Office 365 Exchange Online'
+        CorrelationId: 'corr-ok-{{i}}'
+
+  - name: benign_mfa_interrupt_burst_does_not_fire
+    should_fire: false
+    notes: >-
+      50076 is the normal "MFA required by policy/location" interrupt seen on routine
+      interactive sign-ins. A burst of interrupts across apps must NOT fire — locks in the
+      exclusion of interrupt codes from the denial selection.
+    events_generator:
+      count: 8
+      window_seconds: 300
+      template:
+        AuthenticationRequirement: multiFactorAuthentication
+        ResultType: 50076
+        ResultDescription: 'Strong authentication is required'
+        UserId: 'a1b2c3d4-0000-4000-8000-000000000009'
+        UserPrincipalName: 'jsmith@example.local'
+        IPAddress: '10.0.0.9'
+        AppDisplayName: 'Office 365 Exchange Online'
+        CorrelationId: 'corr-int-{{i}}'

@@ -1,0 +1,11 @@
+# Tests for E-011 — Scheduled Task Created. Synthetic data only.
+rule: E-011_scheduled_task_created
+cases:
+  - name: schtasks /create fires
+    should_fire: true
+    events:
+      - { Image: 'C:\Windows\System32\schtasks.exe', CommandLine: 'schtasks /create /tn Updater /tr "powershell -enc ..." /sc onlogon', ParentImage: 'C:\Windows\System32\cmd.exe', SubjectUserName: attacker }
+  - name: schtasks /query does not fire
+    should_fire: false
+    events:
+      - { Image: 'C:\Windows\System32\schtasks.exe', CommandLine: 'schtasks /query', ParentImage: 'C:\Windows\System32\cmd.exe', SubjectUserName: jsmith }

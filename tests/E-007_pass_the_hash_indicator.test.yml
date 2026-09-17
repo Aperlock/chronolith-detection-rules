@@ -1,0 +1,76 @@
+rule: E-007_pass_the_hash_indicator
+cases:
+  - name: NewCredentials seclogo logon with Negotiate package fires (runas /netonly + mimikatz pth source artifact)
+    should_fire: true
+    events:
+      - EventID: 4624
+        LogonType: 9
+        AuthenticationPackageName: 'Negotiate'
+        LogonProcessName: 'seclogo'
+        SubjectUserName: 'jsmith'
+        SubjectUserSid: 'S-1-5-21-1004336348-1177238915-682003330-1108'
+        TargetUserName: 'svc-admin'
+        TargetDomainName: 'EXAMPLE'
+        WorkstationName: 'WS-01'
+        IpAddress: '10.0.0.9'
+        ProcessName: 'C:\Windows\System32\runas.exe'
+
+  - name: NewCredentials seclogo logon with NTLM package variant also fires
+    should_fire: true
+    events:
+      - EventID: 4624
+        LogonType: 9
+        AuthenticationPackageName: 'NTLM'
+        LogonProcessName: 'seclogo'
+        SubjectUserName: 'jsmith'
+        SubjectUserSid: 'S-1-5-21-1004336348-1177238915-682003330-1108'
+        TargetUserName: 'svc-admin'
+        TargetDomainName: 'EXAMPLE'
+        WorkstationName: 'WS-01'
+        IpAddress: '10.0.0.9'
+        ProcessName: 'C:\Windows\System32\runas.exe'
+
+  - name: Null SID (S-1-0-0) NewCredentials event is filtered out (noisy benign variant)
+    should_fire: false
+    events:
+      - EventID: 4624
+        LogonType: 9
+        AuthenticationPackageName: 'Negotiate'
+        LogonProcessName: 'seclogo'
+        SubjectUserName: '-'
+        SubjectUserSid: 'S-1-0-0'
+        TargetUserName: 'svc-admin'
+        TargetDomainName: 'EXAMPLE'
+        WorkstationName: 'WS-01'
+        IpAddress: '10.0.0.9'
+        ProcessName: 'C:\Windows\System32\svchost.exe'
+
+  - name: Ordinary interactive NTLM logon (Type 2, not NewCredentials) does not fire
+    should_fire: false
+    events:
+      - EventID: 4624
+        LogonType: 2
+        AuthenticationPackageName: 'NTLM'
+        LogonProcessName: 'User32'
+        SubjectUserName: 'jsmith'
+        SubjectUserSid: 'S-1-5-21-1004336348-1177238915-682003330-1108'
+        TargetUserName: 'jsmith'
+        TargetDomainName: 'EXAMPLE'
+        WorkstationName: 'WS-01'
+        IpAddress: '10.0.0.9'
+        ProcessName: 'C:\Windows\System32\winlogon.exe'
+
+  - name: Ordinary Type 3 NTLM network logon (file share) is out of scope and does not fire
+    should_fire: false
+    events:
+      - EventID: 4624
+        LogonType: 3
+        AuthenticationPackageName: 'NTLM'
+        LogonProcessName: 'NtLmSsp'
+        SubjectUserName: 'jsmith'
+        SubjectUserSid: 'S-1-5-21-1004336348-1177238915-682003330-1108'
+        TargetUserName: 'jsmith'
+        TargetDomainName: 'EXAMPLE'
+        WorkstationName: 'WS-02'
+        IpAddress: '10.0.0.20'
+        ProcessName: '-'

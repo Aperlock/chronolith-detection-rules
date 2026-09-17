@@ -1,0 +1,15 @@
+# Tests for C-014 — File Timestomp. Synthetic data only.
+rule: C-014_timestomp
+cases:
+  - name: Sysmon EID 2 (file creation time changed) fires
+    should_fire: true
+    events:
+      - { EventID: 2, Image: 'C:\Windows\Temp\dropper.exe', TargetFilename: 'C:\Windows\System32\evil.dll' }
+  - name: powershell setting LastWriteTime fires
+    should_fire: true
+    events:
+      - { Image: 'C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe', CommandLine: "powershell (gi C:\\Temp\\a.exe).LastWriteTime = '2020-01-01'", ParentImage: 'C:\Windows\System32\cmd.exe' }
+  - name: an unrelated Sysmon process-create does not fire
+    should_fire: false
+    events:
+      - { EventID: 1, Image: 'C:\Windows\explorer.exe', CommandLine: 'explorer.exe' }

@@ -1,0 +1,22 @@
+# Tests for FS-002 — Mass File Deletion on a Monitored Share. Synthetic data only.
+rule: FS-002_mass_file_deletion
+cases:
+  - name: 100+ deletes by one user in the window fires
+    should_fire: true
+    events_generator:
+      count: 130
+      window_seconds: 240
+      template:
+        EventID: 4663
+        AccessMask: '0x10000'
+        SubjectUserName: jsmith
+        ProcessName: 'C:\Windows\explorer.exe'
+        ObjectName: '\\FS-01\Matters\client-{{i}}\doc.docx'
+  - name: a few deletes does not fire
+    should_fire: false
+    events:
+      - { EventID: 4663, AccessMask: '0x10000', SubjectUserName: jsmith, ObjectName: '\\FS-01\Matters\client-1\old.docx' }
+  - name: read access (not delete) does not fire
+    should_fire: false
+    events:
+      - { EventID: 4663, AccessMask: '0x1', SubjectUserName: jsmith, ObjectName: '\\FS-01\Matters\client-1\doc.docx' }

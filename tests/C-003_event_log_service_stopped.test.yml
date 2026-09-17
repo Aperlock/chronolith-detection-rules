@@ -1,0 +1,42 @@
+# Test cases for C-003 — Windows Event Log Service Stopped.
+# Single-event matching harness: the rule matches on one 7036 'stopped' for the
+# Event Log service. Reboot suppression (1074/6006 correlation) is an alerting-time
+# concern documented in the rule, not expressible in this single-event harness.
+# Synthetic data only.
+rule: C-003_event_log_service_stopped
+cases:
+  - name: event-log-service-entered-stopped-state
+    should_fire: true
+    events:
+      - Provider_Name: Service Control Manager
+        EventID: 7036
+        param1: 'Windows Event Log'
+        param2: 'stopped'
+        Computer: WS-01
+
+  - name: event-log-service-started-running-not-stopped
+    should_fire: false
+    events:
+      - Provider_Name: Service Control Manager
+        EventID: 7036
+        param1: 'Windows Event Log'
+        param2: 'running'
+        Computer: WS-01
+
+  - name: different-service-stopped-not-event-log
+    should_fire: false
+    events:
+      - Provider_Name: Service Control Manager
+        EventID: 7036
+        param1: 'Print Spooler'
+        param2: 'stopped'
+        Computer: FS-01
+
+  - name: wrong-provider-same-eventid-does-not-fire
+    should_fire: false
+    events:
+      - Provider_Name: Microsoft-Windows-Eventlog
+        EventID: 7036
+        param1: 'Windows Event Log'
+        param2: 'stopped'
+        Computer: WS-01

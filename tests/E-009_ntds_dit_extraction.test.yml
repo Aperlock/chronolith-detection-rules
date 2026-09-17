@@ -1,0 +1,65 @@
+rule: E-009_ntds_dit_extraction
+cases:
+  - name: ntdsutil IFM create dumps NTDS.dit
+    should_fire: true
+    events:
+      - EventID: 4688
+        Image: 'C:\Windows\System32\ntdsutil.exe'
+        CommandLine: 'ntdsutil "ac i ntds" "ifm" "create full C:\\temp\\ad" q q'
+        ParentImage: 'C:\Windows\System32\cmd.exe'
+        SubjectUserName: 'jsmith'
+        Computer: 'DC-01'
+  - name: esentutl copies ntds.dit via VSS
+    should_fire: true
+    events:
+      - EventID: 4688
+        Image: 'C:\Windows\System32\esentutl.exe'
+        CommandLine: 'esentutl.exe /y /vss C:\Windows\NTDS\ntds.dit /d C:\temp\ntds.dit'
+        ParentImage: 'C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe'
+        SubjectUserName: 'jsmith'
+        Computer: 'DC-01'
+  - name: ntds.dit copied straight out of a shadow copy device path
+    should_fire: true
+    events:
+      - EventID: 4688
+        Image: 'C:\Windows\System32\cmd.exe'
+        CommandLine: 'cmd.exe /c copy \?\GLOBALROOT\Device\HarddiskVolumeShadowCopy1\Windows\NTDS\ntds.dit C:\temp\ntds.dit'
+        ParentImage: 'C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe'
+        SubjectUserName: 'jsmith'
+        Computer: 'DC-01'
+  - name: vssadmin creates a shadow copy to lift the locked database
+    should_fire: true
+    events:
+      - EventID: 4688
+        Image: 'C:\Windows\System32\vssadmin.exe'
+        CommandLine: 'vssadmin create shadow /for=C:'
+        ParentImage: 'C:\Windows\System32\cmd.exe'
+        SubjectUserName: 'jsmith'
+        Computer: 'DC-01'
+  - name: wmic shadowcopy call create
+    should_fire: true
+    events:
+      - EventID: 4688
+        Image: 'C:\Windows\System32\wbem\wmic.exe'
+        CommandLine: "wmic shadowcopy call create Volume='C:\\'"
+        ParentImage: 'C:\Windows\System32\cmd.exe'
+        SubjectUserName: 'jsmith'
+        Computer: 'DC-01'
+  - name: vssadmin deleting shadows is C-002 territory, not this rule
+    should_fire: false
+    events:
+      - EventID: 4688
+        Image: 'C:\Windows\System32\vssadmin.exe'
+        CommandLine: 'vssadmin delete shadows /all /quiet'
+        ParentImage: 'C:\Windows\System32\cmd.exe'
+        SubjectUserName: 'jsmith'
+        Computer: 'DC-01'
+  - name: benign process creation is untouched
+    should_fire: false
+    events:
+      - EventID: 4688
+        Image: 'C:\Windows\System32\notepad.exe'
+        CommandLine: 'notepad.exe C:\Users\jsmith\notes.txt'
+        ParentImage: 'C:\Windows\explorer.exe'
+        SubjectUserName: 'jsmith'
+        Computer: 'DC-01'

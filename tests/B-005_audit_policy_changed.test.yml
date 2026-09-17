@@ -1,0 +1,11 @@
+# Tests for B-005 — System Audit Policy Changed. Synthetic data only.
+rule: B-005_audit_policy_changed
+cases:
+  - name: audit policy change fires
+    should_fire: true
+    events:
+      - { EventID: 4719, SubjectUserName: attacker, SubcategoryId: 'Logon', AuditPolicyChanges: 'Success and Failure removed' }
+  - name: an unrelated event does not fire
+    should_fire: false
+    events:
+      - { EventID: 4624, SubjectUserName: jsmith }

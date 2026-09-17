@@ -1,0 +1,15 @@
+# Tests for E-013 — Suspicious New Service Installed. Synthetic data only.
+rule: E-013_suspicious_new_service
+cases:
+  - name: service whose binary is powershell fires
+    should_fire: true
+    events:
+      - { EventID: 7045, ServiceName: 'UpdaterSvc', ImagePath: 'powershell -nop -w hidden -enc SQBF...', AccountName: 'LocalSystem' }
+  - name: service binary in a temp path fires
+    should_fire: true
+    events:
+      - { EventID: 7045, ServiceName: 'Helper', ImagePath: 'C:\Windows\Temp\svc.exe', AccountName: 'LocalSystem' }
+  - name: a normal service (svchost) does not fire
+    should_fire: false
+    events:
+      - { EventID: 7045, ServiceName: 'WSearch', ImagePath: 'C:\Windows\System32\svchost.exe -k netsvcs', AccountName: 'LocalSystem' }

@@ -1,0 +1,11 @@
+# Tests for C-012 — AMSI Bypass Indicator. Synthetic data only.
+rule: C-012_amsi_bypass_indicator
+cases:
+  - name: amsiInitFailed reflection fires
+    should_fire: true
+    events:
+      - { Image: 'C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe', CommandLine: "powershell [Ref].Assembly.GetType('System.Management.Automation.AmsiUtils').GetField('amsiInitFailed','NonPublic,Static').SetValue($null,$true)", ParentImage: 'C:\Windows\System32\cmd.exe', SubjectUserName: attacker }
+  - name: benign powershell does not fire
+    should_fire: false
+    events:
+      - { Image: 'C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe', CommandLine: 'powershell Get-ChildItem', ParentImage: 'C:\Windows\explorer.exe', SubjectUserName: jsmith }

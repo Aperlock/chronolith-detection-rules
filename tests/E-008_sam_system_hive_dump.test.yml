@@ -1,0 +1,71 @@
+rule: E-008_sam_system_hive_dump
+cases:
+  - name: reg.exe save of the SAM hive to disk
+    should_fire: true
+    events:
+      - EventID: 4688
+        Image: 'C:\Windows\System32\reg.exe'
+        CommandLine: 'reg save HKLM\SAM C:\Users\jsmith\AppData\Local\Temp\sam.hiv'
+        SubjectUserName: 'jsmith'
+        ParentImage: 'C:\Windows\System32\cmd.exe'
+        Computer: 'WS-01'
+
+  - name: reg.exe save of the SYSTEM hive (boot key for offline crack)
+    should_fire: true
+    events:
+      - EventID: 4688
+        Image: 'C:\Windows\System32\reg.exe'
+        CommandLine: 'reg save HKLM\SYSTEM system.hiv'
+        SubjectUserName: 'jsmith'
+        ParentImage: 'C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe'
+        Computer: 'WS-01'
+
+  - name: esentutl VSS copy of the live SAM
+    should_fire: true
+    events:
+      - EventID: 4688
+        Image: 'C:\Windows\System32\esentutl.exe'
+        CommandLine: 'esentutl.exe /y /vss C:\Windows\System32\config\SAM /d C:\temp\SAM.bin'
+        SubjectUserName: 'jsmith'
+        ParentImage: 'C:\Windows\System32\cmd.exe'
+        Computer: 'FS-01'
+
+  - name: shadow-copy path copy of the SAM hive
+    should_fire: true
+    events:
+      - EventID: 4688
+        Image: 'C:\Windows\System32\cmd.exe'
+        CommandLine: 'cmd /c copy \?\GLOBALROOT\Device\HarddiskVolumeShadowCopy1\Windows\System32\config\SAM C:\temp\SAM'
+        SubjectUserName: 'jsmith'
+        ParentImage: 'C:\Windows\System32\cmd.exe'
+        Computer: 'FS-01'
+
+  - name: benign reg query against SAM (read, not save)
+    should_fire: false
+    events:
+      - EventID: 4688
+        Image: 'C:\Windows\System32\reg.exe'
+        CommandLine: 'reg query HKLM\SAM\SAM\Domains\Account'
+        SubjectUserName: 'jsmith'
+        ParentImage: 'C:\Windows\System32\cmd.exe'
+        Computer: 'WS-01'
+
+  - name: reg.exe save of an unrelated application hive
+    should_fire: false
+    events:
+      - EventID: 4688
+        Image: 'C:\Windows\System32\reg.exe'
+        CommandLine: 'reg save HKLM\SOFTWARE\Contoso\App app-backup.hiv'
+        SubjectUserName: 'jsmith'
+        ParentImage: 'C:\Windows\System32\cmd.exe'
+        Computer: 'WS-01'
+
+  - name: esentutl VSS backup of an app database whose name merely contains SAM (not a hive dump)
+    should_fire: false
+    events:
+      - EventID: 4688
+        Image: 'C:\Windows\System32\esentutl.exe'
+        CommandLine: 'esentutl.exe /y /vss D:\SAMPLE\store.edb /d E:\backup\store.edb'
+        SubjectUserName: 'svc-backup'
+        ParentImage: 'C:\Program Files\BackupAgent\agent.exe'
+        Computer: 'FS-01'

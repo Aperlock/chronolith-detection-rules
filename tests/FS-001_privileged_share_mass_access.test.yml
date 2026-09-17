@@ -1,0 +1,36 @@
+# Test cases for FS-001 — Mass Access to a Sensitive File Share.
+# Synthetic data only — no real matter names, users, or shares.
+rule: FS-001_privileged_share_mass_access
+cases:
+  - name: one user reading 100+ distinct matter files in the window fires
+    should_fire: true
+    notes: 100 distinct RelativeTargetName values for jsmith within 5 minutes.
+    events_generator:
+      count: 120
+      window_seconds: 240
+      template:
+        EventID: 5145
+        AccessMask: '0x1'
+        SubjectUserName: jsmith
+        ShareName: '\\FS-01\Matters'
+        RelativeTargetName: 'client-{{i}}/privileged-memo.docx'   # {{i}} = unique per event
+
+  - name: same user touching only a handful of files does not fire
+    should_fire: false
+    events:
+      - { EventID: 5145, AccessMask: '0x1', SubjectUserName: jsmith, ShareName: '\\FS-01\Matters', RelativeTargetName: 'client-1/memo.docx' }
+      - { EventID: 5145, AccessMask: '0x1', SubjectUserName: jsmith, ShareName: '\\FS-01\Matters', RelativeTargetName: 'client-1/brief.docx' }
+      - { EventID: 5145, AccessMask: '0x1', SubjectUserName: jsmith, ShareName: '\\FS-01\Matters', RelativeTargetName: 'client-2/notes.docx' }
+
+  - name: excluded backup service account at high volume does not fire
+    should_fire: false
+    notes: svc-backup is on the exclusion list; volume alone must not trip it.
+    events_generator:
+      count: 500
+      window_seconds: 240
+      template:
+        EventID: 5145
+        AccessMask: '0x1'
+        SubjectUserName: svc-backup
+        ShareName: '\\FS-01\Matters'
+        RelativeTargetName: 'client-{{i}}/file.docx'
