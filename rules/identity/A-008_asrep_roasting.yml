@@ -1,0 +1,64 @@
+# A-008 — AS-REP Roasting (pre-auth-disabled RC4 TGT harvesting)
+title: AS-REP Roasting - TGT Request for a Pre-Auth-Disabled Account (RC4)
+name: asrep_roasting_no_preauth
+id: a8e1f2c3-4b5d-4e6a-9f70-1a2b3c4d5e08
+status: experimental
+description: >-
+  A Kerberos AS-REQ / TGT (EventID 4768) is issued for an account whose Kerberos
+  pre-authentication is DISABLED (PreAuthType 0) using RC4 (TicketEncryptionType
+  0x17). With pre-auth off, anyone can request the account's AS-REP and crack the
+  RC4-encrypted portion offline to recover the plaintext password — no prior
+  access needed. Accounts with "Do not require Kerberos preauthentication" set are
+  rare and almost always a misconfiguration or an attacker-staged foothold, so a
+  single hit is high-signal; a burst of distinct target accounts from one source
+  is an active roasting sweep. For a lean SME team with a few DCs, this is a cheap,
+  high-fidelity way to catch credential theft before the cracked password is reused.
+references:
+  - https://attack.mitre.org/techniques/T1558/004/
+  - https://learn.microsoft.com/windows/security/threat-protection/auditing/event-4768
+author: Aperlock
+date: 2026-08-05
+tags:
+  - attack.credential-access
+  - attack.t1558.004
+logsource:
+  product: windows
+  service: security
+detection:
+  selection:
+    EventID: 4768                  # a Kerberos authentication ticket (TGT) was requested
+    PreAuthType: '0'               # pre-authentication NOT used — the roastable condition
+    TicketEncryptionType: '0x17'   # RC4-HMAC — the crackable AS-REP type
+  filter_machine:
+    TargetUserName|endswith: '$'   # exclude computer/machine accounts
+  condition: selection and not filter_machine
+fields:
+  - TargetUserName
+  - ServiceName
+  - IpAddress
+  - PreAuthType
+  - TicketEncryptionType
+falsepositives:
+  - A standing account intentionally configured with pre-auth disabled (legacy app,
+    appliance, or old service account) re-fires this single-hit HIGH on EVERY logon
+    and TGT renewal, not just the first — this is the dominant benign cause. Inventory
+    such accounts and exclude by TargetUserName; better, re-enable pre-authentication
+    so the rule quiets on its own and the exposure is actually closed.
+  - Old Kerberos-over-RC4 clients that a vulnerability scanner or account-audit
+    tool exercises — exclude the known scanner source IPs.
+level: high
+# Requires "Audit Kerberos Authentication Service" (Success) on domain controllers
+# to emit 4768. Same Account Logon audit family as 4769 (A-007): both are commonly
+# present on DCs via the legacy "Audit account logon events: Success" default in the
+# Default Domain Controllers Policy, but neither is guaranteed on a hardened/custom
+# audit baseline — confirm the subcategory is on if this rule stays silent.
+
+# SINGLE HIT FIRES (2026-09-17). This previously carried a value_count correlation requiring
+# five distinct TargetUserName from one IpAddress in ten minutes, which meant the single most
+# diagnostic event in the pattern -- one RC4 ticket for a pre-auth-disabled account -- could
+# not raise anything on its own.
+#
+# A sweep now produces one finding per targeted account rather than one per source. That names
+# every account an attacker asked for, which is what the responder needs, at the cost of
+# volume. If that volume proves wrong against a live estate, the way back is a SEPARATE
+# higher-severity sweep rule -- not a threshold here, which would re-hide the single hit.

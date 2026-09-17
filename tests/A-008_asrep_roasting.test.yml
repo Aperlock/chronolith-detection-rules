@@ -35,8 +35,8 @@ cases:
         IpAddress: 10.0.0.9
         TargetUserName: 'user-{{i}}'
 
-  - name: four distinct roastable accounts stays under the sweep threshold
-    should_fire: false
+  - name: four distinct roastable accounts fire as four single hits
+    should_fire: true
     events_generator:
       count: 4
       window_seconds: 300
