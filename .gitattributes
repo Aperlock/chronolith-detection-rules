@@ -1,0 +1,4 @@
+# Rules and fixtures are matched as text and diffed by contributors. Git must not
+# rewrite line endings: an editor on Windows silently producing CRLF turns a
+# one-line rule change into a whole-file diff nobody can review.
+* -text
