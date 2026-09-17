@@ -1,0 +1,76 @@
+# FS-001 — Mass Access to a Privileged File Share (proposed new category: filesystem)
+title: Mass Access to a Sensitive File Share by One User
+name: privileged_share_mass_access
+id: c2f7d3b1-2a45-4d8b-ae32-1b2c3d4e5f01
+status: experimental
+description: >
+  A single user reads a large number of distinct files from a monitored file
+  share in a short window — the collection footprint of a compromised account or
+  insider hoovering documents ahead of exfiltration. For law firms this is the
+  attorney-client-privilege nightmare: one account quietly enumerating a matter
+  share. Scope the share allowlist to your privileged/matter shares to sharpen it.
+references:
+  - https://attack.mitre.org/techniques/T1039/
+  - https://learn.microsoft.com/windows/security/threat-protection/auditing/event-5145
+author: Aperlock
+date: 2026-08-05
+tags:
+  - attack.collection
+  - attack.t1039
+logsource:
+  product: windows
+  service: security
+detection:
+  selection:
+    EventID: 5145                 # a network share object was checked for access
+    AccessMask|contains: '0x1'    # ReadData / ListDirectory
+  # THE EXCLUSION THIS RULE'S OWN falsepositives ASKED FOR AND DID NOT HAVE. Backup, indexing,
+  # DLP and AV accounts read thousands of files by design, so without this the rule fires on
+  # every backup job, every night -- the alert-fatigue failure that gets a whole detection
+  # channel ignored.
+  #
+  # THIS IS THE TUNING POINT. Replace these prefixes with the service accounts your estate
+  # actually uses; the defaults are a convention, not a survey.
+  #
+  # And a name-based exclusion is a BYPASS: an attacker who can name an account `svc-` opts
+  # out of this rule. That is an accepted cost here because a Sigma rule cannot consult the
+  # directory, but it is the reason this exclusion is narrow and explicit rather than a
+  # pattern like `*svc*`.
+  filter_service_accounts:
+    SubjectUserName|startswith:
+      - 'svc-'
+      - 'svc_'
+      - 'sa-'
+      - 'sa_'
+  condition: selection and not filter_service_accounts
+fields:
+  - SubjectUserName
+  - ShareName
+  - RelativeTargetName
+  - IpAddress
+falsepositives:
+  - Backup, indexing, DLP, or AV service accounts that legitimately touch many
+    files — excluded by `filter_service_accounts`, which you must scope to the
+    account names your estate actually uses. An account that reads a matter share
+    and is NOT in that list is the finding.
+  - Genuine bulk work (litigation review, e-discovery, a large matter export) —
+    high count is expected there; confirm the user and the share
+level: high
+# Requires "Audit Detailed File Share" (5145) on the file server. Ship DISABLED
+# by default until the share allowlist + service-account exclusions are set —
+# noisy otherwise.
+---
+# Threshold: same user reads >= 100 distinct files on a monitored share / 5 min.
+title: Mass Access to a Sensitive File Share by One User (threshold)
+id: c2f7d3b1-2a45-4d8b-ae32-1b2c3d4e5f11
+status: experimental
+correlation:
+  type: value_count
+  rules:
+    - privileged_share_mass_access
+  group-by:
+    - SubjectUserName
+  timespan: 5m
+  condition:
+    field: RelativeTargetName
+    gte: 100

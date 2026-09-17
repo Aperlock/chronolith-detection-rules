@@ -1,0 +1,67 @@
+# Make CONTRIBUTING.md true.
+#
+# It says "Rules without tests aren't merged." Until the test runner existed, nothing could
+# check that — for a contributor's PR or for our own commits. Fifty test files sat in the repo
+# and none of them had ever been executed. This is what turns that sentence from a promise
+# into a gate.
+#
+# Two checks, and they catch different things:
+#
+#   rule_lint.py   structural holes that make a rule silently never fire — a condition naming
+#                  a selection that does not exist, a correlation pointing at no base rule,
+#                  a logsource and EventID that cannot route to each other.
+#   rule_test.py   whether the rule actually fires on the events its test says it should,
+#                  which is the only question left once the YAML parses.
+#
+# A rule can pass the linter and be completely wrong. That is the whole reason for the second.
+
+name: rules
+
+on:
+  pull_request:
+    paths: ['rules/**', 'tests/**', 'tools/**', '.github/workflows/rules.yml']
+  push:
+    branches: [main, master]
+    paths: ['rules/**', 'tests/**', 'tools/**', '.github/workflows/rules.yml']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install PyYAML
+        run: pip install --disable-pip-version-check pyyaml
+
+      # Structure first. A rule that does not parse cannot be tested, and the linter's
+      # failures are far easier to read than a traceback from the runner.
+      - name: Lint rule structure
+        run: python tools/rule_lint.py
+
+      - name: Run rule tests
+        run: python tools/rule_test.py
+
+      # Reported, never gating. A rule with no test is a real gap and it is listed in the job
+      # summary so a reviewer sees it — but failing the build on it would mean every PR that
+      # touches an unrelated rule goes red for somebody else's omission, and a gate that is
+      # red for reasons you did not cause is a gate people learn to ignore.
+      - name: Rules without tests
+        if: always()
+        continue-on-error: true
+        run: |
+          python tools/rule_test.py --list | tee /tmp/untested.txt || true
+          {
+            echo '### Rules without a test file'
+            echo ''
+            echo '```'
+            cat /tmp/untested.txt
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"

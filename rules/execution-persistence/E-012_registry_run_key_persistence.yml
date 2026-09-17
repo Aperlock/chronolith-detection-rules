@@ -1,0 +1,55 @@
+# E-012 — Registry Run-Key Persistence
+title: Registry Run-Key Persistence
+id: b7e4c1a2-3d5e-4f6a-8b7c-9d0e1f2a0e12
+status: experimental
+description: >
+  A Run / RunOnce registry key is written — the simplest, most common auto-start
+  persistence on Windows. The concern is a run key pointing at a script, a
+  temp/AppData binary, or an interpreter; legitimate software also uses run keys,
+  so the value is what it points at.
+references:
+  - https://attack.mitre.org/techniques/T1547/001/
+  - https://learn.microsoft.com/windows/security/threat-protection/auditing/event-4688
+author: Aperlock
+date: 2026-08-06
+tags:
+  - attack.persistence
+  - attack.t1547.001
+logsource:
+  product: windows
+  category: process_creation
+detection:
+  selection_reg:
+    Image|endswith: '\reg.exe'
+    CommandLine|contains:
+      - '\CurrentVersion\Run'
+      - '\CurrentVersion\RunOnce'
+  selection_ps:
+    Image|endswith:
+      - '\powershell.exe'
+      - '\pwsh.exe'
+    CommandLine|contains: '\CurrentVersion\Run'
+  # Reading a Run key is enumeration, not persistence. Without this the rule fired on
+  # `reg query ...\CurrentVersion\Run`, which is what an admin and a defender both do.
+  #
+  # Excluding known READ verbs rather than requiring known WRITE ones is deliberate: a verb
+  # nobody listed still fires, so a novel or obscure way of writing the key is caught rather
+  # than missed. The failure direction is toward detecting.
+  filter_read_only:
+    CommandLine|contains:
+      - ' query'
+      - ' export'
+      - 'Get-ItemProperty'
+      - 'Get-ChildItem'
+  condition: 1 of selection_* and not filter_read_only
+fields:
+  - CommandLine
+  - ParentImage
+  - SubjectUserName
+falsepositives:
+  - Software installers legitimately add run keys — allowlist known installers; run keys pointing at AppData/Temp paths or script interpreters are the finding
+  - Backup or inventory tooling that ENUMERATES run keys is excluded by `filter_read_only`;
+    a tool that writes one is not, and should not be
+level: medium
+# Detects run-key writes via reg.exe / PowerShell (needs 4688 command line or Sysmon EID 1).
+# EventID 4657 (registry value modified) is the richer source but requires a registry SACL.
