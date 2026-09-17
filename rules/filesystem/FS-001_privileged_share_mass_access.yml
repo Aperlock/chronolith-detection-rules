@@ -23,7 +23,27 @@ logsource:
 detection:
   selection:
     EventID: 5145                 # a network share object was checked for access
-    AccessMask|contains: '0x1'    # ReadData / ListDirectory
+    # ACCESSMASK IS A BITMASK AND SIGMA CANNOT TEST BITS. This was `|contains: '0x1'`, which
+    # is wrong in BOTH directions and therefore worse than a plain exact match -- an exact
+    # match at least fails predictably:
+    #
+    #   0x89  ReadData|ReadEA|ReadAttributes   MISSED   <- the common real value
+    #   0x81  ReadData|ReadAttributes          MISSED
+    #   0x9   ReadData|ReadEA                  MISSED
+    #   0x10  not a read                       matched
+    #   0x100 WriteAttributes                  matched
+    #
+    # A mass-read rule that misses the most common read mask is a false negative in the
+    # detection whose whole job is noticing somebody hoovering a matter share. Enumerated
+    # instead; extend the list when a new mask shows up in real telemetry. Same treatment
+    # as D-001, which had the mirror-image problem on the write side.
+    AccessMask:
+      - '0x1'         # ReadData / ListDirectory
+      - '0x9'         # ReadData | ReadEA
+      - '0x81'        # ReadData | ReadAttributes
+      - '0x89'        # ReadData | ReadEA | ReadAttributes
+      - '0x100081'    # ReadData | SYNCHRONIZE
+      - '0x120089'    # generic read
   # THE EXCLUSION THIS RULE'S OWN falsepositives ASKED FOR AND DID NOT HAVE. Backup, indexing,
   # DLP and AV accounts read thousands of files by design, so without this the rule fires on
   # every backup job, every night -- the alert-fatigue failure that gets a whole detection

@@ -34,3 +34,30 @@ cases:
         SubjectUserName: svc-backup
         ShareName: '\\FS-01\Matters'
         RelativeTargetName: 'client-{{i}}/file.docx'
+
+  # 0x89 is the mask a real Windows file read most often carries. The previous
+  # `|contains: '0x1'` matched neither it nor 0x81, so this rule silently missed the
+  # ordinary case while matching 0x10 and 0x100, which are not reads at all.
+  - name: reads carrying the common combined mask 0x89 still fire
+    should_fire: true
+    events_generator:
+      count: 120
+      window_seconds: 240
+      template:
+        EventID: 5145
+        AccessMask: '0x89'
+        SubjectUserName: jsmith
+        ShareName: '\\FS-01\Matters'
+        RelativeTargetName: 'client-{{i}}/file.docx'
+
+  - name: a write-only mask is not a read and does not fire
+    should_fire: false
+    events_generator:
+      count: 120
+      window_seconds: 240
+      template:
+        EventID: 5145
+        AccessMask: '0x2'
+        SubjectUserName: jsmith
+        ShareName: '\\FS-01\Matters'
+        RelativeTargetName: 'client-{{i}}/file.docx'
