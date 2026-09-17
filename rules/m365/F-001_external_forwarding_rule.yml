@@ -26,7 +26,21 @@ detection:
   selection_external:
     - ForwardTo|contains: '@'
     - RedirectTo|contains: '@'
-  condition: selection_op and selection_external
+  # THE RULE IS TITLED "EXTERNAL" AND DID NOT CHECK EXTERNALITY. Every address contains '@',
+  # so forwarding to a colleague in the same tenant fired exactly as loudly as forwarding to
+  # an attacker's mailbox.
+  #
+  # THIS IS THE TUNING POINT AND IT SHIPS AS A PLACEHOLDER ON PURPOSE. `example.local` matches
+  # nothing real, so an untuned rule keeps the old behaviour and fires on everything -- noisy,
+  # and the safe direction. A default that silently suppressed a real tenant's domain would be
+  # a rule that stopped working the day it was installed and said nothing.
+  #
+  # List every domain the tenant owns, including vanity and legacy ones. A domain missed here
+  # is forwarding nobody hears about.
+  filter_internal:
+    - ForwardTo|endswith: '@example.local'
+    - RedirectTo|endswith: '@example.local'
+  condition: selection_op and selection_external and not filter_internal
 fields:
   - UserId
   - ForwardTo
@@ -35,6 +49,10 @@ falsepositives:
   - A user forwarding to their own personal address — a policy violation regardless,
     but confirm intent before escalating to incident
   - Approved, IT-configured forwarding (should be documented)
+  - A rule forwarding to BOTH an internal and an external address is suppressed by
+    `filter_internal`, because the filter matches if EITHER field is internal. Sigma
+    cannot express "every recipient is internal". Rare, and a known gap rather than
+    an accident.
 level: high
 # Note for reviewers/tuning: an "external" destination is best decided against the
 # tenant's own accepted domains; treat any non-internal recipient as external.

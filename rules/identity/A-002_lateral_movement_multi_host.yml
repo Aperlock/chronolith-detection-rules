@@ -20,9 +20,15 @@ logsource:
 detection:
   selection:
     EventID:
-      - 4624   # successful logon
-      - 4648   # logon using explicit credentials
-  condition: selection
+      - 4624
+      - 4648
+  # A machine account authenticating to many hosts is what machine accounts DO -- that is
+  # the shape of ordinary domain traffic, not of a credential being walked around. A-007 and
+  # A-008 both exclude them; this rule did not, so every workstation account in the estate
+  # looked like lateral movement.
+  filter_machine:
+    TargetUserName|endswith: '$'
+  condition: selection and not filter_machine
 fields:
   - TargetUserName
   - IpAddress

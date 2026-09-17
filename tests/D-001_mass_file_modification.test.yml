@@ -1,0 +1,54 @@
+# Test cases for D-001 - Mass File Modification (ransomware encryption footprint).
+# Synthetic data only. Events are oldest-first; timestamps are relative seconds.
+rule: D-001_mass_file_modification
+cases:
+  - name: 200 writes by one process in under a minute fires
+    should_fire: true
+    events_generator:
+      count: 200
+      window_seconds: 45
+      template:
+        EventID: 4663
+        AccessMask: '0x2'
+        SubjectUserName: jsmith
+        ProcessName: 'C:\Users\jsmith\AppData\Local\Temp\enc.exe'
+        ObjectName: 'D:\Matters\file-{{i}}.docx'
+
+  - name: 150 writes stays under the threshold
+    should_fire: false
+    events_generator:
+      count: 150
+      window_seconds: 45
+      template:
+        EventID: 4663
+        AccessMask: '0x2'
+        SubjectUserName: jsmith
+        ProcessName: 'C:\Users\jsmith\AppData\Local\Temp\enc.exe'
+        ObjectName: 'D:\Matters\file-{{i}}.docx'
+
+  - name: 200 writes spread over an hour is normal work, not encryption
+    should_fire: false
+    events_generator:
+      count: 200
+      window_seconds: 3600
+      template:
+        EventID: 4663
+        AccessMask: '0x2'
+        SubjectUserName: jsmith
+        ProcessName: 'C:\Program Files\Microsoft Office\root\Office16\WINWORD.EXE'
+        ObjectName: 'D:\Matters\file-{{i}}.docx'
+
+  # A real 4663 AccessMask is frequently a COMBINED mask rather than a bare 0x2.
+  # The sibling rule FS-001 uses `AccessMask|contains` for exactly this reason.
+  # If this case does not fire, the rule under-matches real telemetry.
+  - name: writes carrying a combined access mask still fire
+    should_fire: true
+    events_generator:
+      count: 200
+      window_seconds: 45
+      template:
+        EventID: 4663
+        AccessMask: '0x6'
+        SubjectUserName: jsmith
+        ProcessName: 'C:\Users\jsmith\AppData\Local\Temp\enc.exe'
+        ObjectName: 'D:\Matters\file-{{i}}.docx'

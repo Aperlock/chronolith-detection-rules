@@ -1,0 +1,23 @@
+# Test cases for F-007 - Illicit OAuth Consent Grant.
+# Synthetic data only. Events are oldest-first; timestamps are relative seconds.
+rule: F-007_illicit_oauth_consent
+cases:
+  - name: consent granting Mail.ReadWrite fires
+    should_fire: true
+    events:
+      - { t: 0, Operation: Consent to application, UserId: jsmith@example.local, ObjectId: 'app-0001', ModifiedProperties: 'Scope: Mail.ReadWrite offline_access' }
+
+  - name: a delegated permission grant for Files.ReadWrite.All fires
+    should_fire: true
+    events:
+      - { t: 0, Operation: Add delegated permission grant, UserId: jsmith@example.local, ObjectId: 'app-0002', ModifiedProperties: 'Scope: Files.ReadWrite.All' }
+
+  - name: consent limited to User.Read does not fire
+    should_fire: false
+    events:
+      - { t: 0, Operation: Consent to application, UserId: jsmith@example.local, ObjectId: 'app-0003', ModifiedProperties: 'Scope: User.Read openid profile' }
+
+  - name: an unrelated audit operation does not fire
+    should_fire: false
+    events:
+      - { t: 0, Operation: Add member to role, UserId: jsmith@example.local, ObjectId: 'app-0004', ModifiedProperties: 'Scope: Mail.ReadWrite' }

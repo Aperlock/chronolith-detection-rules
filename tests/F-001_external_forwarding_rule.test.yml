@@ -1,0 +1,27 @@
+# Test cases for F-001 - M365 External Email Forwarding Rule Created.
+# Synthetic data only. Events are oldest-first; timestamps are relative seconds.
+rule: F-001_external_forwarding_rule
+cases:
+  - name: an inbox rule forwarding to an external address fires
+    should_fire: true
+    events:
+      - { t: 0, Operation: New-InboxRule, UserId: jsmith@example.local, ForwardTo: 'attacker@mailinator.com' }
+
+  - name: an inbox rule redirecting to an external address fires
+    should_fire: true
+    events:
+      - { t: 0, Operation: Set-InboxRule, UserId: jsmith@example.local, RedirectTo: 'attacker@mailinator.com' }
+
+  - name: an inbox rule with no forwarding at all does not fire
+    should_fire: false
+    events:
+      - { t: 0, Operation: New-InboxRule, UserId: jsmith@example.local, MoveToFolder: Archive }
+
+  # The rule is titled EXTERNAL forwarding and its description says "to an external
+  # address". Forwarding to a colleague in the same tenant is routine. If this case
+  # fires, the rule is not checking externality at all -- it matches any address
+  # containing "@", which every address does.
+  - name: forwarding to a colleague in the same tenant is not external
+    should_fire: false
+    events:
+      - { t: 0, Operation: New-InboxRule, UserId: jsmith@example.local, ForwardTo: 'colleague@example.local' }

@@ -1,0 +1,25 @@
+# Test cases for B-001 - Account Added to a Domain Admin Group.
+# Synthetic data only. Events are oldest-first; timestamps are relative seconds.
+rule: B-001_new_domain_admin
+cases:
+  - name: adding a member to Domain Admins fires
+    should_fire: true
+    events:
+      - { t: 0, EventID: 4728, TargetUserName: Domain Admins, MemberName: 'CN=jsmith,OU=Users,DC=example,DC=local', SubjectUserName: a1admin }
+
+  - name: adding a member to Enterprise Admins fires
+    should_fire: true
+    events:
+      - { t: 0, EventID: 4728, TargetUserName: Enterprise Admins, MemberName: 'CN=jsmith,OU=Users,DC=example,DC=local', SubjectUserName: a1admin }
+
+  - name: adding a member to an ordinary group does not fire
+    should_fire: false
+    events:
+      - { t: 0, EventID: 4728, TargetUserName: Marketing, MemberName: 'CN=jsmith,OU=Users,DC=example,DC=local', SubjectUserName: a1admin }
+
+  # 4729 is REMOVAL from a group. A rule watching for privilege GRANTS must not fire
+  # on somebody's admin rights being taken away.
+  - name: removing a member from Domain Admins does not fire
+    should_fire: false
+    events:
+      - { t: 0, EventID: 4729, TargetUserName: Domain Admins, MemberName: 'CN=jsmith,OU=Users,DC=example,DC=local', SubjectUserName: a1admin }

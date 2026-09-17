@@ -1,0 +1,28 @@
+# Test cases for C-001 - Microsoft Defender Disabled.
+# Synthetic data only. Events are oldest-first; timestamps are relative seconds.
+rule: C-001_defender_disabled
+cases:
+  - name: the Defender service reporting stopped fires
+    should_fire: true
+    events:
+      - { t: 0, EventID: 7036, param1: Windows Defender Antivirus Service, param2: stopped, ComputerName: WS-01 }
+
+  - name: the Defender service reporting running does not fire
+    should_fire: false
+    events:
+      - { t: 0, EventID: 7036, param1: Windows Defender Antivirus Service, param2: running, ComputerName: WS-01 }
+
+  - name: a different service stopping does not fire
+    should_fire: false
+    events:
+      - { t: 0, EventID: 7036, param1: Print Spooler, param2: stopped, ComputerName: WS-01 }
+
+  - name: policy setting DisableAntiSpyware to 1 fires
+    should_fire: true
+    events:
+      - { t: 0, EventID: 4657, ObjectName: '\REGISTRY\MACHINE\SOFTWARE\Policies\Microsoft\Windows Defender', ObjectValueName: DisableAntiSpyware, NewValue: '1', SubjectUserName: jsmith }
+
+  - name: policy setting DisableAntiSpyware back to 0 does not fire
+    should_fire: false
+    events:
+      - { t: 0, EventID: 4657, ObjectName: '\REGISTRY\MACHINE\SOFTWARE\Policies\Microsoft\Windows Defender', ObjectValueName: DisableAntiSpyware, NewValue: '0', SubjectUserName: jsmith }

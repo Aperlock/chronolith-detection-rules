@@ -1,0 +1,41 @@
+# Test cases for A-002 - Lateral Movement: One Account, Many Hosts.
+# Synthetic data only. Events are oldest-first; timestamps are relative seconds.
+rule: A-002_lateral_movement_multi_host
+cases:
+  - name: one account authenticating to five distinct hosts in the window fires
+    should_fire: true
+    events:
+      - { t: 0,   EventID: 4624, TargetUserName: jsmith, WorkstationName: WS-01 }
+      - { t: 40,  EventID: 4624, TargetUserName: jsmith, WorkstationName: WS-02 }
+      - { t: 95,  EventID: 4624, TargetUserName: jsmith, WorkstationName: WS-03 }
+      - { t: 150, EventID: 4624, TargetUserName: jsmith, WorkstationName: WS-04 }
+      - { t: 220, EventID: 4624, TargetUserName: jsmith, WorkstationName: WS-05 }
+
+  - name: four distinct hosts stays under the threshold
+    should_fire: false
+    events:
+      - { t: 0,   EventID: 4624, TargetUserName: jsmith, WorkstationName: WS-01 }
+      - { t: 40,  EventID: 4624, TargetUserName: jsmith, WorkstationName: WS-02 }
+      - { t: 95,  EventID: 4624, TargetUserName: jsmith, WorkstationName: WS-03 }
+      - { t: 150, EventID: 4624, TargetUserName: jsmith, WorkstationName: WS-04 }
+
+  - name: repeated logons to the SAME host are one host, not five
+    should_fire: false
+    events:
+      - { t: 0,   EventID: 4624, TargetUserName: jsmith, WorkstationName: WS-01 }
+      - { t: 30,  EventID: 4624, TargetUserName: jsmith, WorkstationName: WS-01 }
+      - { t: 60,  EventID: 4624, TargetUserName: jsmith, WorkstationName: WS-01 }
+      - { t: 90,  EventID: 4624, TargetUserName: jsmith, WorkstationName: WS-01 }
+      - { t: 120, EventID: 4624, TargetUserName: jsmith, WorkstationName: WS-01 }
+
+  # A machine account authenticating across the estate is what machine accounts DO.
+  # A-007 and A-008 both exclude them; this rule does not. If this case fires, that
+  # is the finding, not the test.
+  - name: a machine account walking five hosts is not lateral movement
+    should_fire: false
+    events:
+      - { t: 0,   EventID: 4624, TargetUserName: WS-01$, WorkstationName: SRV-01 }
+      - { t: 40,  EventID: 4624, TargetUserName: WS-01$, WorkstationName: SRV-02 }
+      - { t: 95,  EventID: 4624, TargetUserName: WS-01$, WorkstationName: SRV-03 }
+      - { t: 150, EventID: 4624, TargetUserName: WS-01$, WorkstationName: SRV-04 }
+      - { t: 220, EventID: 4624, TargetUserName: WS-01$, WorkstationName: SRV-05 }

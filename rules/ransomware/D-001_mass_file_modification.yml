@@ -19,8 +19,20 @@ logsource:
   service: security
 detection:
   selection:
-    EventID: 4663                 # object access: file modification (SACL required)
-    AccessMask: '0x2'             # WRITE
+    EventID: 4663
+    # ACCESSMASK IS A BITMASK AND SIGMA CANNOT TEST BITS. A write on a real 4663 arrives as
+    # WriteData (0x2), AppendData (0x4), or the two combined (0x6) -- exact-matching 0x2 alone
+    # silently missed most real encryption activity, which is the worst kind of wrong for a
+    # ransomware rule: a FALSE NEGATIVE that reports nothing and looks healthy.
+    #
+    # `|contains` is NOT the fix and is worth saying so, because the sibling rule FS-001 uses
+    # it: '0x6' does not contain the substring '0x2', while '0x20' does. Substring matching on
+    # hex is arbitrary, not bitwise. Enumerating the masks that actually occur is honest, and
+    # the list has to be extended when a new one shows up.
+    AccessMask:
+      - '0x2'     # WriteData
+      - '0x4'     # AppendData
+      - '0x6'     # WriteData | AppendData
   condition: selection
 fields:
   - SubjectUserName
