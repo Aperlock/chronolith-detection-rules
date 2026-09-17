@@ -1,0 +1,83 @@
+# D-007 — Ransom Note Dropped Across Directories
+title: Ransom Note Dropped Across Many Directories
+name: ransom_note_mass_drop
+id: d03615bf-d82e-48ef-91c9-5c20d0acef87
+status: experimental
+description: >-
+  A single process writes the same recovery/ransom-note filename (README, DECRYPT,
+  HOW_TO_DECRYPT, RECOVER-FILES with a .txt or .hta extension) into many distinct
+  directories in a short window. Ransomware drops an identical note in every folder
+  it encrypts, so a fan-out of one note filename across dozens of paths is a
+  high-fidelity impact signal (T1491.001) — often the first thing a lean team sees
+  before users start calling about locked files. Catching it during the drop, rather
+  than after full encryption, buys minutes to isolate the host. Complementary to,
+  not a duplicate of, D-001 (mass modification, any file) and D-003 (rename to known
+  ransom extensions): this keys on the note filename and fires at low volume, often
+  before those broad-churn thresholds are reached.
+references:
+  - https://attack.mitre.org/techniques/T1491/001/
+  - https://learn.microsoft.com/windows/security/threat-protection/auditing/event-4663
+author: Aperlock
+date: 2026-08-05
+tags:
+  - attack.impact
+  - attack.t1491.001
+logsource:
+  product: windows
+  service: security
+detection:
+  selection_write:
+    EventID: 4663
+    ObjectType: File          # match file objects only — not directory/registry 4663 rows
+    # 0x2 = WriteData / AddFile — the note is being created/written.
+    # NOTE: substring match on AccessMask (same convention as D-001/D-003); a composite
+    # mask that does not contain the literal '0x2' can evade — accepted trade-off here.
+    AccessMask|contains: '0x2'
+  selection_note_name:
+    ObjectName|contains:
+      - '\README'
+      - '\DECRYPT'
+      - '\HOW_TO_DECRYPT'
+      - '\HOW-TO-DECRYPT'
+      - '\RECOVER-FILES'
+      - '\RECOVER_FILES'
+  selection_note_ext:
+    ObjectName|endswith:
+      - '.txt'
+      - '.hta'
+  condition: selection_write and selection_note_name and selection_note_ext
+fields:
+  - SubjectUserName
+  - ProcessName
+  - ProcessId
+  - ObjectName
+  - AccessMask
+falsepositives:
+  - README/DECRYPT is a ubiquitous filename. Software packages, extracted archives, and
+    installers routinely drop readme.txt into many component folders at once — scope SACLs
+    to DATA shares/volumes, not application/code volumes, and exclude installer/IT-script
+    process paths and service accounts.
+  - Backup, DLP, or security tooling that stages README/RECOVER files estate-wide — exclude
+    those service accounts and process paths.
+  - Bulk documentation or template rollouts (e.g. a "DECRYPT-instructions.txt" support
+    artefact) pushed by a management tool.
+level: high
+# Requires "Audit File System" (4663) AND a SACL (audit ACE for write) on the monitored data
+# volumes/shares — 4663 produces nothing without SACLs. Sysmon Event ID 11 (FileCreate) is an
+# alternative source that needs no SACL. Ship DISABLED by default until SACLs (or Sysmon) and
+# the service-account/process exclusions above are in place.
+---
+title: Ransom Note Dropped Across Many Directories (threshold)
+id: dcfb4d90-59ee-4b55-bcb3-22093f864304
+status: experimental
+correlation:
+  type: value_count
+  rules:
+    - ransom_note_mass_drop
+  group-by:
+    - SubjectUserName
+    - ProcessId
+  timespan: 5m
+  condition:
+    field: ObjectName
+    gte: 15

@@ -1,0 +1,46 @@
+# C-009 — Signed Binary Proxy Execution (rundll32 / regsvr32 / mshta)
+title: Signed Binary Proxy Execution
+id: c8f5a1b2-4d6e-4a7c-9b8d-0e1f2a3b0c09
+status: experimental
+description: >
+  A signed Microsoft binary is used to run attacker code — rundll32 loading a
+  remote or script payload, regsvr32 pulling a remote .sct via scrobj.dll
+  (squiblydoo), or mshta executing inline/remote script. These proxy execution
+  through trusted, allowlisted binaries to bypass application control.
+references:
+  - https://attack.mitre.org/techniques/T1218/
+  - https://learn.microsoft.com/windows/security/threat-protection/auditing/event-4688
+author: Aperlock
+date: 2026-08-06
+tags:
+  - attack.defense-evasion
+  - attack.t1218
+logsource:
+  product: windows
+  category: process_creation
+detection:
+  selection_rundll32:
+    Image|endswith: '\rundll32.exe'
+    CommandLine|contains:
+      - 'javascript:'
+      - 'http'
+  selection_regsvr32:
+    Image|endswith: '\regsvr32.exe'
+    CommandLine|contains:
+      - 'scrobj.dll'
+      - '/i:http'
+  selection_mshta:
+    Image|endswith: '\mshta.exe'
+    CommandLine|contains:
+      - 'javascript:'
+      - 'vbscript:'
+      - 'http'
+  condition: 1 of selection_*
+fields:
+  - Image
+  - CommandLine
+  - ParentImage
+falsepositives:
+  - A few legitimate installers use rundll32/regsvr32 — allowlist them; a URL or script: scheme in these command lines is rarely legitimate
+level: high
+# Requires process-creation logging with command line (4688 + "Include command line", or Sysmon EID 1).

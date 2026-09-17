@@ -1,0 +1,34 @@
+# LM-001 — Remote Desktop (RDP) Lateral Logon
+title: RDP Interactive Logon (lateral movement)
+id: 9a3d5e7f-1b2c-4d3e-8a4b-5c6d7e8f0101
+status: experimental
+description: >
+  A successful RemoteInteractive (RDP, Logon Type 10) logon. RDP is the most
+  common hands-on-keyboard lateral path in SME estates. A logon to a host — or from
+  a source — not normally seen for that account is the signal; routine admin RDP is
+  expected, novel source→target pairs are not.
+references:
+  - https://attack.mitre.org/techniques/T1021/001/
+  - https://learn.microsoft.com/windows/security/threat-protection/auditing/event-4624
+author: Aperlock
+date: 2026-08-06
+tags:
+  - attack.lateral-movement
+  - attack.t1021.001
+logsource:
+  product: windows
+  service: security
+detection:
+  selection:
+    EventID: 4624
+    LogonType: 10
+  condition: selection
+fields:
+  - TargetUserName
+  - IpAddress
+  - WorkstationName
+falsepositives:
+  - Routine administrative RDP and jump-host access — the value is a first-time or unusual source→account pair, which Chronolith scores against the per-account/host baseline; unscoped this matches all RDP
+level: medium
+# 4624 Type 10 fires on every RDP logon. Chronolith raises severity on first-time /
+# anomalous source-account pairs via the behavioral baseline; the base selection matches all.

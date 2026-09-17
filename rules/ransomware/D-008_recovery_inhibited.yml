@@ -1,0 +1,82 @@
+# D-008 — Windows Recovery Inhibited (recovery env / shadowstorage)
+title: Windows Recovery Inhibited via Recovery Env or Shadow Storage
+id: 85b2c184-05d3-4dd3-93e9-4eefc2e00ddc
+status: experimental
+description: >-
+  Detects the recovery-inhibition variants ransomware runs just before or during
+  encryption so victims cannot roll back: reagentc /disable (turns off the Windows
+  Recovery Environment), vssadmin resize shadowstorage to a tiny size (silently
+  purges existing Volume Shadow Copies without a "delete" verb), and wbadmin delete
+  systemstatebackup (removes system-state backups). Complements C-002, which covers
+  the delete-verb variants (vssadmin delete shadows, wmic shadowcopy delete, wbadmin
+  delete catalog, bcdedit recoveryenabled no) — the match strings here are disjoint
+  from C-002, so a single command fires only one rule. Any single occurrence on a
+  workstation or server is treated as critical — legitimate admins rarely destroy
+  recovery capability, and for a lean SME team this is often the only warning before
+  files are locked, so it must page a human immediately rather than wait for a
+  threshold.
+references:
+  - https://attack.mitre.org/techniques/T1490/
+  - https://learn.microsoft.com/windows/security/threat-protection/auditing/event-4688
+author: Aperlock
+date: 2026-08-05
+tags:
+  - attack.impact
+  - attack.t1490
+logsource:
+  product: windows
+  category: process_creation
+detection:
+  selection_reagentc_img:
+    Image|endswith: '\reagentc.exe'
+    CommandLine|contains: 'disable'
+  selection_reagentc_cli:
+    CommandLine|contains|all:
+      - 'reagentc'
+      - 'disable'
+  selection_shadowstorage_img:
+    Image|endswith: '\vssadmin.exe'
+    CommandLine|contains|all:
+      - 'resize'
+      - 'shadowstorage'
+  selection_shadowstorage_cli:
+    CommandLine|contains|all:
+      - 'resize shadowstorage'
+      - 'maxsize'
+  selection_wbadmin_img:
+    Image|endswith: '\wbadmin.exe'
+    CommandLine|contains|all:
+      - 'delete'
+      - 'systemstatebackup'
+  selection_wbadmin_cli:
+    CommandLine|contains|all:
+      - 'wbadmin'
+      - 'delete systemstatebackup'
+  condition: 1 of selection_*
+fields:
+  - Image
+  - CommandLine
+  - ParentImage
+  - ParentCommandLine
+  - SubjectUserName
+  - Computer
+falsepositives:
+  - Backup/DR software or a scripted rebuild that legitimately resizes shadow storage
+    or prunes system-state backups on a maintenance window — confirm the parent
+    process and operator, then allowlist the specific host/account.
+  - Scheduled backup rotation using "wbadmin delete systemstatebackup" (often with
+    -keepVersions:0 / -quiet) to prune old system-state images — a real pattern in
+    shops that back up with wbadmin. Allowlist the backup account/host once confirmed.
+  - Sysprep/imaging or OEM recovery-media workflows that call reagentc /disable before
+    re-enabling — expected on golden-image build hosts, not on production endpoints.
+  - Admin resizing VSS storage — this rule fires on any "vssadmin resize shadowstorage"
+    regardless of the target size (growing storage matches too, not just shrinking to
+    purge); rare on production endpoints and worth reviewing given the blast radius.
+level: critical
+# PREREQUISITE — the ENTIRE rule depends on the process command line. Every selection
+# (both the _img and the _cli variants) matches on CommandLine, so none of them work
+# under bare EventID 4688: the rule requires either "Include command line in process
+# creation events" + Audit Process Creation (4688 command-line capture, OFF by default
+# in Windows), or Sysmon Event ID 1. Ship this rule DISABLED by default until command-
+# line capture or Sysmon is deployed — the Image|endswith anchors alone do not make any
+# selection usable without the command line.

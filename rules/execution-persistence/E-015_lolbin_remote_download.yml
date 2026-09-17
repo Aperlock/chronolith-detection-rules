@@ -1,0 +1,50 @@
+# E-015 — Remote Payload Download via LOLBin
+title: Remote Payload Download via a Living-off-the-Land Binary
+id: b7e4c1a2-3d5e-4f6a-8b7c-9d0e1f2a0e15
+status: experimental
+description: >
+  A built-in Windows tool is used to pull a file from the internet — certutil
+  urlcache, bitsadmin transfer, curl/wget, or a PowerShell web download. Attackers
+  prefer these "living-off-the-land" binaries because they're signed and present
+  on every host. The strong signal is a download landing in temp/AppData, then run.
+references:
+  - https://attack.mitre.org/techniques/T1105/
+  - https://learn.microsoft.com/windows/security/threat-protection/auditing/event-4688
+author: Aperlock
+date: 2026-08-06
+tags:
+  - attack.command-and-control
+  - attack.t1105
+logsource:
+  product: windows
+  category: process_creation
+detection:
+  selection_certutil:
+    Image|endswith: '\certutil.exe'
+    CommandLine|contains:
+      - 'urlcache'
+      - 'verifyctl'
+  selection_bitsadmin:
+    Image|endswith: '\bitsadmin.exe'
+    CommandLine|contains: '/transfer'
+  selection_curl:
+    Image|endswith:
+      - '\curl.exe'
+      - '\wget.exe'
+    CommandLine|contains: 'http'
+  selection_ps:
+    CommandLine|contains:
+      - 'DownloadFile'
+      - 'DownloadString'
+      - 'Invoke-WebRequest'
+      - 'Start-BitsTransfer'
+  condition: 1 of selection_*
+fields:
+  - Image
+  - CommandLine
+  - ParentImage
+  - SubjectUserName
+falsepositives:
+  - Admin scripts and some installers legitimately download with these tools — allowlist known tooling; a download to Temp/AppData that is then executed is the strong signal
+level: high
+# Requires process-creation logging with command line (4688 + "Include command line", or Sysmon EID 1).

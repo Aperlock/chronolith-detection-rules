@@ -1,0 +1,36 @@
+# E-011 — Scheduled Task Created
+title: Scheduled Task Created
+id: b7e4c1a2-3d5e-4f6a-8b7c-9d0e1f2a0e11
+status: experimental
+description: >
+  A scheduled task is created. Scheduled tasks are one of the most common
+  persistence and lateral-execution mechanisms — they survive reboot and run on a
+  trigger. Tasks that launch a script interpreter, or run from a temp/user path,
+  are the concern; routine software and GPO tasks are not.
+references:
+  - https://attack.mitre.org/techniques/T1053/005/
+  - https://learn.microsoft.com/windows/security/threat-protection/auditing/event-4698
+author: Aperlock
+date: 2026-08-06
+tags:
+  - attack.persistence
+  - attack.execution
+  - attack.t1053.005
+logsource:
+  product: windows
+  category: process_creation
+detection:
+  selection:
+    Image|endswith: '\schtasks.exe'
+    CommandLine|contains: '/create'
+  condition: selection
+fields:
+  - CommandLine
+  - ParentImage
+  - SubjectUserName
+falsepositives:
+  - Software installers, GPO, and IT maintenance create tasks legitimately — allowlist known tooling; tasks whose action is powershell/cmd or a temp-path binary are the finding
+level: medium
+# Detects task creation via schtasks.exe (needs 4688 command line, or Sysmon EID 1).
+# The richer signal is EventID 4698 (task registered, with the full task XML) — enable
+# "Audit Other Object Access Events" to capture it, then match on the task action.

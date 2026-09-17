@@ -1,0 +1,64 @@
+# C-008 — Security Event Log Cleared
+title: Security Event Log Cleared
+id: 6e281c6e-838a-411b-94d0-771a80b609e4
+status: experimental
+description: >-
+  The Windows Security audit log was cleared (EventID 1102), or a process invoked
+  wevtutil clear-log / Clear-EventLog / Remove-EventLog to wipe an event channel.
+  Clearing the audit trail is a defense-evasion move to destroy evidence — an
+  attacker covering tracks after credential theft, lateral movement, or ransomware
+  staging. On a server this is near-always malicious: legitimate admins have no
+  routine reason to erase the Security log, and doing so blinds every downstream
+  detection. For a lean SME team with no dedicated SOC, this single event is the
+  clearest tamper signal they will get — treat one occurrence as high/critical and
+  investigate who and why immediately.
+references:
+  - https://attack.mitre.org/techniques/T1070/001/
+  - https://learn.microsoft.com/windows/security/threat-protection/auditing/event-1102
+author: Aperlock
+date: 2026-08-05
+tags:
+  - attack.defense-evasion
+  - attack.t1070.001
+logsource:
+  product: windows
+  service: security
+detection:
+  selection_1102:
+    EventID: 1102
+  selection_wevtutil:
+    EventID: 4688
+    Image|endswith: '\wevtutil.exe'
+    CommandLine|contains:
+      - ' cl '
+      - ' clear-log '
+  selection_powershell:
+    EventID: 4688
+    CommandLine|contains:
+      - 'Clear-EventLog'
+      - 'Remove-EventLog'
+  condition: 1 of selection_*
+fields:
+  - EventID
+  - SubjectUserName
+  - SubjectDomainName
+  - Computer
+  - Image
+  - CommandLine
+falsepositives:
+  - Deliberate log rotation or maintenance by an administrator — rare, and still
+    worth a same-day confirmation that the clear was intentional and authorized
+  - Golden-image / provisioning tooling that clears logs before capturing a template
+    — expected only on build hosts, never on production servers; scope to build VLANs
+  - SIEM/forwarder onboarding scripts that reset a channel once during setup — a
+    one-time event tied to a known change window, not a recurring pattern
+  - The wevtutil / PowerShell selections match clearing ANY event channel, not only
+    Security (e.g. an admin clearing the Application or an operational log while
+    troubleshooting). EventID 1102 is Security-log-specific; the 4688 selections are
+    broader by design — confirm which channel was cleared before escalating
+level: high
+# EventID 1102 fires without special config (Security-log clears are always audited).
+# The wevtutil / PowerShell 4688 selections additionally require "Audit Process
+# Creation" WITH "Include command line in process creation events" (off by default).
+# Those two selections ship DISABLED by default until command-line auditing is enabled;
+# the EventID 1102 selection is the reliable primary signal and needs no prerequisite.

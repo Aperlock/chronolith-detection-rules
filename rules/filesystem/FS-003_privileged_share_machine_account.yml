@@ -1,0 +1,39 @@
+# FS-003 — Privileged Share Access by a Machine/Service Account
+title: Sensitive Share Access by a Machine or Service Account
+name: privileged_share_machine_account_access
+id: 7e1a2b3c-0d4e-4f5a-9b6c-1d2e3f4a0f03
+status: experimental
+description: >
+  A machine account ($) reads files on a privileged/matter share it has no reason
+  to touch. Attackers pivot through computer and service identities because their
+  activity blends into automation — but a workstation or app-server account
+  reading privileged legal documents is anomalous and worth a fast look.
+references:
+  - https://attack.mitre.org/techniques/T1039/
+  - https://learn.microsoft.com/windows/security/threat-protection/auditing/event-5145
+author: Aperlock
+date: 2026-08-06
+tags:
+  - attack.collection
+  - attack.t1039
+logsource:
+  product: windows
+  service: security
+detection:
+  selection:
+    EventID: 5145
+    ShareName|contains: 'Matters'   # tune to your privileged/matter share names
+    AccessMask|contains: '0x1'
+  selection_machine:
+    SubjectUserName|endswith: '$'
+  condition: selection and selection_machine
+fields:
+  - SubjectUserName
+  - ShareName
+  - RelativeTargetName
+falsepositives:
+  - Backup, indexing, or DLP service/computer accounts that legitimately read the share — allowlist them; the point is to catch the machine/service identities that are NOT on that list
+level: medium
+# Requires "Audit Detailed File Share" (5145). Tune ShareName to your
+# privileged/matter shares and allowlist the accounts that should touch them.
+# Ship DISABLED by default.

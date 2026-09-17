@@ -1,0 +1,34 @@
+# F-002 — M365 Mailbox Full-Access Permission Granted
+title: M365 Mailbox Full-Access Permission Granted
+id: 7e1a2b3c-0d4e-4f5a-9b6c-1d2e3f4a0002
+status: experimental
+description: >
+  A user is granted FullAccess to another user's mailbox. Attackers use mailbox
+  delegation to read a target's mail without a forwarding rule — quieter than
+  exfil rules and easy to miss. Grants to external or non-IT principals are the
+  concern for law-firm and finance tenants.
+references:
+  - https://attack.mitre.org/techniques/T1098/002/
+  - https://learn.microsoft.com/purview/audit-log-activities
+author: Aperlock
+date: 2026-08-06
+tags:
+  - attack.persistence
+  - attack.t1098.002
+logsource:
+  product: m365
+  service: audit
+detection:
+  selection:
+    Operation: 'Add-MailboxPermission'
+    AccessRights|contains: 'FullAccess'
+  filter_self:
+    UserId|contains: 'NT AUTHORITY'
+  condition: selection and not filter_self
+fields:
+  - UserId
+  - ObjectId
+  - AccessRights
+falsepositives:
+  - Executive-assistant delegation and shared-mailbox setup — allowlist known delegations; external or unexpected grantees are the real finding
+level: high

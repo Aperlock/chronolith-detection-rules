@@ -1,0 +1,38 @@
+# B-007 — Sensitive Privilege Assigned at Logon
+title: Sensitive Privilege Assigned at Logon
+id: 8f2c1a4b-0e5d-4a6c-9b7e-2c3d4e5f0b07
+status: experimental
+description: >
+  A logon is granted a sensitive privilege — SeDebugPrivilege, SeTcbPrivilege,
+  SeLoadDriverPrivilege, or SeCreateTokenPrivilege — the privileges behind token
+  theft, LSASS access, and privilege escalation. In a non-admin context
+  SeDebugPrivilege in particular is a strong malware indicator.
+references:
+  - https://attack.mitre.org/techniques/T1134/
+  - https://learn.microsoft.com/windows/security/threat-protection/auditing/event-4672
+author: Aperlock
+date: 2026-08-06
+tags:
+  - attack.privilege-escalation
+  - attack.defense-evasion
+  - attack.t1134
+logsource:
+  product: windows
+  service: security
+detection:
+  selection:
+    EventID: 4672
+    PrivilegeList|contains:
+      - 'SeDebugPrivilege'
+      - 'SeTcbPrivilege'
+      - 'SeLoadDriverPrivilege'
+      - 'SeCreateTokenPrivilege'
+  condition: selection
+fields:
+  - SubjectUserName
+  - PrivilegeList
+falsepositives:
+  - Admin tooling, backup agents, and security scanners legitimately hold these — 4672 fires on every admin logon, so scope to non-admin/service accounts (Chronolith account classification) or it is very noisy
+level: high
+# 4672 is high-volume (every privileged logon). Scope to non-admin accounts via the
+# account classifier before enabling broadly, or expect heavy benign volume.

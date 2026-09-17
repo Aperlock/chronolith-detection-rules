@@ -1,0 +1,49 @@
+# E-004 — Encoded or Obfuscated PowerShell Execution
+title: Encoded or Obfuscated PowerShell Execution
+id: b7e4c1a2-3d5e-4f6a-8b7c-9d0e1f2a0e04
+status: experimental
+description: >
+  PowerShell launched with an encoded command or obfuscation/download flags —
+  -EncodedCommand/-enc, FromBase64String, a hidden window, or an inline
+  download-and-execute. Attackers encode to slip past command-line inspection and
+  AV. Legitimate tooling occasionally uses -enc, but rarely combined with a hidden
+  window and a network download.
+references:
+  - https://attack.mitre.org/techniques/T1059/001/
+  - https://learn.microsoft.com/windows/security/threat-protection/auditing/event-4688
+author: Aperlock
+date: 2026-08-06
+tags:
+  - attack.execution
+  - attack.t1059.001
+  - attack.t1027
+logsource:
+  product: windows
+  category: process_creation
+detection:
+  selection_img:
+    Image|endswith:
+      - '\powershell.exe'
+      - '\pwsh.exe'
+  selection_enc:
+    CommandLine|contains:
+      - ' -enc '
+      - ' -EncodedCommand'
+      - 'FromBase64String'
+      - ' -e JAB'          # base64 of a leading $ (common in encoded payloads)
+  selection_susp:
+    CommandLine|contains:
+      - 'DownloadString'
+      - 'DownloadFile'
+      - 'IEX('
+      - 'Invoke-Expression'
+      - 'Net.WebClient'
+  condition: selection_img and (selection_enc or selection_susp)
+fields:
+  - CommandLine
+  - ParentImage
+  - SubjectUserName
+falsepositives:
+  - Some legitimate installers and management scripts use -EncodedCommand — allowlist known deployment tooling; encoded + hidden window + download together is rarely benign
+level: high
+# Requires process-creation logging with command line (4688 + "Include command line", or Sysmon EID 1).

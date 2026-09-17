@@ -1,0 +1,93 @@
+# D-003 — Mass Rename to Known Ransomware Extensions
+# PREREQUISITE: Event 4663 requires "Audit File System" (Object Access) ENABLED
+# and a SACL (auditing entry) applied to the monitored folders/shares. Without SACLs
+# no 4663 events are produced. Sysmon Event ID 11 (FileCreate) is an alternative source
+# that does not need SACLs. Ship DISABLED by default until SACLs / Sysmon config and the
+# service-account exclusions below are in place — otherwise this is noisy or silent.
+title: Mass Rename to Known Ransomware Extensions by One User
+name: mass_rename_ransomware_extensions
+id: 7d3f9a2c-1b4e-4c8a-9f2d-3a6b7c8d9e01
+status: experimental
+description: >-
+  A single account writes or renames many distinct files to file names ending in a
+  known ransomware extension (.locked .crypt .encrypted .lockbit .conti and similar)
+  within a short window — the on-disk signature of an encryption payload walking a
+  file share. For a lean SME team with no 24/7 SOC, catching the extension sweep in
+  the first minute is the difference between restoring one folder and restoring the
+  whole estate from backup. Distinct from D-001 (mass modification to ANY extension):
+  this rule keys specifically on the ransom-marker extension so it fires with high
+  confidence and low volume even before D-001's broad churn threshold is reached.
+references:
+  - https://attack.mitre.org/techniques/T1486/
+  - https://learn.microsoft.com/windows/security/threat-protection/auditing/event-4663
+author: Aperlock
+date: 2026-08-05
+tags:
+  - attack.impact
+  - attack.t1486
+logsource:
+  product: windows
+  service: security
+detection:
+  # 4663 = An attempt was made to access an object (file). AccessMask bits of interest:
+  #   0x2 WriteData/AddFile, 0x4 AppendData, 0x10000 DELETE (rename shows as DELETE+create).
+  selection_event:
+    EventID: 4663
+    ObjectType: File
+  selection_write:
+    AccessMask|contains:
+      - '0x2'
+      - '0x4'
+      - '0x10000'
+  selection_ext:
+    ObjectName|endswith:
+      - '.locked'
+      - '.crypt'
+      - '.crypted'
+      - '.encrypted'
+      - '.enc'
+      - '.lockbit'
+      - '.conti'
+      - '.ryk'
+      - '.ryuk'
+      - '.abcd'
+      - '.wncry'
+      - '.wcry'
+      - '.cerber'
+      - '.zepto'
+      - '.locky'
+      - '.crysis'
+      - '.phobos'
+      - '.makop'
+      - '.blackbyte'
+      - '.basta'
+  condition: selection_event and selection_write and selection_ext
+fields:
+  - SubjectUserName
+  - ProcessName
+  - ObjectName
+  - AccessMask
+falsepositives:
+  - Backup, archival, or e-discovery tooling that legitimately produces files ending in
+    .enc or .crypt (some vault/encryption products) — identify the service account and
+    process and exclude them before enabling.
+  - A user manually restoring a large set of already-encrypted archive files from cold
+    storage onto a monitored share in bulk.
+  - Security or DLP agents that quarantine files by re-writing them with an encrypted
+    container extension — exclude the agent's process/account.
+level: high
+---
+# Threshold: one user touching many DISTINCT ransom-marked files in a short window.
+title: Mass Rename to Known Ransomware Extensions by One User (threshold)
+id: 7d3f9a2c-1b4e-4c8a-9f2d-3a6b7c8d9e11
+status: experimental
+correlation:
+  type: value_count
+  rules:
+    - mass_rename_ransomware_extensions
+  group-by:
+    - SubjectUserName
+  timespan: 5m
+  condition:
+    field: ObjectName
+    gte: 30

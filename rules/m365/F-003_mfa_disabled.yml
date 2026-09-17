@@ -1,0 +1,33 @@
+# F-003 — M365 MFA Disabled for a User
+title: M365 MFA Disabled for a User
+id: 7e1a2b3c-0d4e-4f5a-9b6c-1d2e3f4a0003
+status: experimental
+description: >
+  Multi-factor authentication is turned off for an account — either an attacker
+  removing a control after compromise, or an unticketed admin change. MFA should
+  almost never be disabled, so a single occurrence is worth a look.
+references:
+  - https://attack.mitre.org/techniques/T1556/
+  - https://learn.microsoft.com/entra/identity/monitoring-health/reference-audit-activities
+author: Aperlock
+date: 2026-08-06
+tags:
+  - attack.credential-access
+  - attack.defense-evasion
+  - attack.t1556
+logsource:
+  product: m365
+  service: audit
+detection:
+  selection_disable:
+    Operation: 'Disable Strong Authentication'
+  selection_update:
+    Operation: 'Update user'
+    ModifiedProperties|contains: 'StrongAuthenticationRequirement'
+  condition: 1 of selection_*
+fields:
+  - UserId
+  - ObjectId
+falsepositives:
+  - Helpdesk disabling MFA for a user who lost their device — should carry a ticket and be re-enabled within 24h; a self-initiated disable can indicate helpdesk social engineering
+level: critical

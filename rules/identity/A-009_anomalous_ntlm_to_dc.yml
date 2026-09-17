@@ -1,0 +1,65 @@
+# A-009 — Anomalous NTLM Authentication to Domain Controller
+title: Anomalous NTLM Authentication to Domain Controller
+name: anomalous_ntlm_to_dc
+id: 620bc748-98bc-4c6b-a9a0-fc1e06596766
+status: experimental
+description: >-
+  A domain controller validates NTLM credentials (EventID 4776) — the legacy
+  challenge/response protocol Kerberos was meant to replace. In a healthy AD
+  estate almost all interactive and network logons ride Kerberos; a sustained
+  burst of NTLM validations from a single source machine is the tell for either
+  an NTLM relay (harvested hashes replayed against the DC) or pass-the-hash
+  reuse, since both surface at the DC as NTLM rather than Kerberos. For a lean
+  SME team with one or two DCs this is a cheap, high-signal way to spot credential
+  replay without deploying extra tooling — the DC already writes the event.
+  Note: targeted single-shot pass-the-hash (one stolen hash, one logon) stays
+  under a volume threshold by design; this rule targets relay/replay bursts.
+references:
+  - https://attack.mitre.org/techniques/T1550/002/
+  - https://learn.microsoft.com/windows/security/threat-protection/auditing/event-4776
+author: Aperlock
+date: 2026-08-05
+tags:
+  - attack.defense-evasion
+  - attack.lateral-movement
+  - attack.t1550.002
+logsource:
+  product: windows
+  service: security
+detection:
+  selection:
+    EventID: 4776
+    PackageName: 'MICROSOFT_AUTHENTICATION_PACKAGE_V1_0'
+  condition: selection
+fields:
+  - WorkstationName
+  - TargetUserName
+  - PackageName
+  - Status
+falsepositives:
+  - Legacy line-of-business apps that only speak NTLM (old intranet apps, some ERP/document-management clients) — identify the source WorkstationName and exclude it
+  - Multi-function printers, scanners and NAS appliances that authenticate to shares over NTLM — allowlist by source machine name
+  - Remote Desktop / Citrix session hosts (RDS) — one source machine aggregating many users' sessions can clear 20 NTLM validations in 10 min on its own; scope RDS/terminal servers out or raise their threshold
+  - Connections made to a host by IP address rather than hostname, which cannot use Kerberos and fall back to NTLM (admin RDP-by-IP, monitoring probes)
+  - Backup software and vulnerability scanners that authenticate broadly and legitimately over NTLM — exclude their source hosts
+  - 4776 frequently carries a blank Source Workstation for pure network logons; those empty values all collapse into one group and can inflate the count — confirm the field is populated before trusting the aggregate
+level: medium
+# Requires the "Audit Credential Validation" subcategory (Success and Failure) to write
+# 4776 on the DC. This is enabled by CIS/STIG baselines but is NOT a Windows default —
+# ship DISABLED by default until you have confirmed 4776 is actually landing and the
+# legacy-NTLM source allowlist above is populated, or the volume rule will alarm on
+# normal print/scan/RDS traffic.
+---
+# Threshold: one source machine drives >= 20 NTLM validations at the DC / 10 min.
+title: Anomalous NTLM Authentication to Domain Controller (volume)
+id: c6f927de-4e14-470a-b293-66bf866251e3
+status: experimental
+correlation:
+  type: event_count
+  rules:
+    - anomalous_ntlm_to_dc
+  group-by:
+    - WorkstationName
+  timespan: 10m
+  condition:
+    gte: 20

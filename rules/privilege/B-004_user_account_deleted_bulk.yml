@@ -1,0 +1,45 @@
+# B-004 — User Account Deleted (bulk)
+title: User Account Deleted (bulk)
+name: user_account_deleted
+id: 8f2c1a4b-0e5d-4a6c-9b7e-2c3d4e5f0b04
+status: experimental
+description: >
+  User accounts are deleted. A single deletion is routine offboarding; a burst in
+  minutes is destructive — covering tracks after compromise, or a disgruntled
+  insider wiping identities. This rule alerts on the burst; single deletions are
+  logged for the compliance record.
+references:
+  - https://attack.mitre.org/techniques/T1531/
+  - https://learn.microsoft.com/windows/security/threat-protection/auditing/event-4726
+author: Aperlock
+date: 2026-08-06
+tags:
+  - attack.impact
+  - attack.t1531
+logsource:
+  product: windows
+  service: security
+detection:
+  selection:
+    EventID: 4726
+  condition: selection
+fields:
+  - TargetUserName
+  - SubjectUserName
+falsepositives:
+  - IT account cleanup during offboarding — should match HR records; a burst still warrants a look
+level: medium
+---
+# Threshold: >= 3 account deletions by one actor / 30 min (bulk destruction).
+title: User Account Deleted (bulk threshold)
+id: 8f2c1a4b-0e5d-4a6c-9b7e-2c3d4e5f0b14
+status: experimental
+correlation:
+  type: event_count
+  rules:
+    - user_account_deleted
+  group-by:
+    - SubjectUserName
+  timespan: 30m
+  condition:
+    gte: 3

@@ -1,0 +1,37 @@
+# LM-004 — WMI Remote Execution
+title: WMI Remote Process Execution
+id: 9a3d5e7f-1b2c-4d3e-8a4b-5c6d7e8f0104
+status: experimental
+description: >
+  A process is created via WMI — spawned by WmiPrvSE.exe (the WMI provider host,
+  indicating a remote WMI call) or invoked through `wmic ... process call create`.
+  WMI is a favored fileless lateral-execution channel because it leaves little on
+  disk. Endpoint management also uses WMI, so context matters.
+references:
+  - https://attack.mitre.org/techniques/T1047/
+  - https://learn.microsoft.com/windows/security/threat-protection/auditing/event-4688
+author: Aperlock
+date: 2026-08-06
+tags:
+  - attack.execution
+  - attack.lateral-movement
+  - attack.t1047
+logsource:
+  product: windows
+  category: process_creation
+detection:
+  selection_parent:
+    ParentImage|endswith: '\WmiPrvSE.exe'
+  selection_wmic:
+    Image|endswith: '\wmic.exe'
+    CommandLine|contains: 'process call create'
+  condition: 1 of selection_*
+fields:
+  - Image
+  - CommandLine
+  - ParentImage
+  - SubjectUserName
+falsepositives:
+  - Endpoint management (SCCM/Intune), monitoring, and inventory tools use WMI heavily — allowlist their processes; remote `wmic process call create` launching cmd/powershell is the strong signal
+level: high
+# Requires process-creation logging with command line (4688 + "Include command line", or Sysmon EID 1).

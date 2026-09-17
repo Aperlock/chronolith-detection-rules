@@ -1,0 +1,40 @@
+# LM-005 — PsExec-style Remote Service Install
+title: PsExec-style Remote Service Installation
+id: 9a3d5e7f-1b2c-4d3e-8a4b-5c6d7e8f0105
+status: experimental
+description: >
+  A service is installed that looks like a remote-execution tool — PsExec's
+  PSEXESVC or a similarly transient service dropped to run a payload as SYSTEM on a
+  target. Remote service creation is a classic lateral-execution technique; on most
+  member servers a new service should be rare and explained.
+references:
+  - https://attack.mitre.org/techniques/T1021/002/
+  - https://learn.microsoft.com/windows/security/threat-protection/auditing/event-4697
+author: Aperlock
+date: 2026-08-06
+tags:
+  - attack.lateral-movement
+  - attack.execution
+  - attack.t1021.002
+  - attack.t1569.002
+logsource:
+  product: windows
+  service: system
+detection:
+  selection:
+    EventID: 7045
+  selection_tool:
+    - ServiceName|contains: 'PSEXESVC'
+    - ImagePath|contains: '\PSEXESVC'
+    - ImagePath|contains: '\PAExec'
+    - ImagePath|contains: '\RemCom'
+  condition: selection and selection_tool
+fields:
+  - ServiceName
+  - ImagePath
+  - AccountName
+falsepositives:
+  - Sanctioned IT use of PsExec/PAExec for remote administration — allowlist the admin hosts that run it; unexplained installs on member servers are the finding
+level: high
+# 7045 is in the System log. Random-named remote-exec services evade this name match —
+# pair with LM-002/LM-004 for broader coverage. Where audited, 4697 (Security log) is equivalent.

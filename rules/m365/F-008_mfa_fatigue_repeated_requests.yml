@@ -1,0 +1,80 @@
+# F-008 — M365: MFA Fatigue / Push-Bombing (Repeated MFA Requests)
+title: MFA Fatigue - Repeated MFA Requests to One User
+name: entra_mfa_fatigue_repeated_requests
+id: 3a393c32-01aa-4a78-94a1-599ad59cd91e
+status: experimental
+description: >-
+  A single Entra ID user receives many multi-factor authentication challenges in a short
+  window — the signature of MFA fatigue / push-bombing, where an attacker who already holds
+  the password spams approval prompts hoping the user taps "Approve" out of annoyance or
+  confusion. Each challenge here is an MFA step the user actively denied or that timed out
+  (ResultType 500121 — "Authentication failed during strong authentication request";
+  covers a declined push, a timed-out prompt, or a rejected number-match). A run of these
+  denials against one account is one of the highest-signal early warnings of an in-progress
+  account takeover: the password is already compromised and only the second factor is
+  holding. Catching the burst lets you reset the credential and revoke sessions before the
+  user gives in and approves. A run of denials that ends in a successful sign-in is an even
+  stronger indicator the fatigue attack worked.
+references:
+  - https://attack.mitre.org/techniques/T1621/
+  - https://learn.microsoft.com/entra/identity/monitoring-health/concept-sign-in-log-activity-details
+author: Aperlock
+date: 2026-08-05
+tags:
+  - attack.credential-access
+  - attack.t1621
+logsource:
+  product: m365
+  service: signinlogs
+detection:
+  # Sign-in rows where MFA was actually required for this attempt.
+  mfa_required:
+    AuthenticationRequirement: multiFactorAuthentication
+  # The strong-auth challenge was actively denied or timed out — a real MFA rejection.
+  # 500121 = "Authentication failed during strong authentication request": the user
+  # declined the push, let it time out, or failed number-match. This is the push-bombing
+  # signature.
+  #
+  # NOTE (do not "helpfully" re-add): the benign MFA *interrupt* codes 50074 / 50076 /
+  # 50079 ("strong auth required", "MFA required by policy/location", "must enroll MFA")
+  # are deliberately EXCLUDED. Those fire on nearly every normal interactive sign-in as
+  # the system prompts for MFA and are almost always followed by a clean success — they
+  # are not denials, and a single user hitting five apps in ten minutes would trip the
+  # threshold constantly. Matching on them turns this into a noise cannon on a lean box.
+  mfa_denied:
+    ResultType:
+      - 500121   # strong authentication request failed (push denied / timeout / number-match rejected)
+  condition: mfa_required and mfa_denied
+fields:
+  - UserPrincipalName
+  - UserId
+  - ResultType
+  - ResultDescription
+  - IPAddress
+  - AppDisplayName
+  - CorrelationId
+falsepositives:
+  - User legitimately struggling with a new phone / re-enrolling an authenticator app and
+    repeatedly missing or declining prompts — confirm out-of-band before treating as attack.
+  - Flaky push delivery or poor mobile connectivity causing timeouts that surface as denials.
+  - A misconfigured or looping legacy app / script re-triggering MFA for the same user —
+    exclude the offending AppDisplayName once identified.
+  - Break-glass or shared operator accounts exercised during change windows.
+level: medium
+# Requires Entra ID sign-in logs to be exported (Diagnostic Settings -> SignInLogs).
+# No on-prem auditing prerequisite; this is cloud sign-in telemetry.
+---
+# Threshold: same UserId accrues >= 5 distinct MFA-denied sign-in attempts / 10 min.
+title: MFA Fatigue - Repeated MFA Requests to One User (threshold)
+id: 0784b2a5-13a1-46f1-9b49-9d527ff6b301
+status: experimental
+correlation:
+  type: value_count
+  rules:
+    - entra_mfa_fatigue_repeated_requests
+  group-by:
+    - UserId
+  timespan: 10m
+  condition:
+    field: CorrelationId
+    gte: 5

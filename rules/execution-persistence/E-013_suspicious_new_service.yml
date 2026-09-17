@@ -1,0 +1,42 @@
+# E-013 — Suspicious New Service (script interpreter or temp-path binary)
+title: Suspicious New Service Installed
+id: b7e4c1a2-3d5e-4f6a-8b7c-9d0e1f2a0e13
+status: experimental
+description: >
+  A Windows service is installed whose binary is a script interpreter (cmd,
+  powershell) or lives in a temp/user path — a common persistence and privilege
+  (SYSTEM) mechanism. Distinct from LM-005, which matches named remote-exec tools;
+  this catches the broader "service that shouldn't look like this" case.
+references:
+  - https://attack.mitre.org/techniques/T1543/003/
+  - https://learn.microsoft.com/windows/security/threat-protection/auditing/event-4697
+author: Aperlock
+date: 2026-08-06
+tags:
+  - attack.persistence
+  - attack.privilege-escalation
+  - attack.t1543.003
+logsource:
+  product: windows
+  service: system
+detection:
+  selection:
+    EventID: 7045
+  selection_susp:
+    ImagePath|contains:
+      - 'powershell'
+      - 'cmd.exe'
+      - 'cmd /c'
+      - '\Temp\'
+      - '\AppData\'
+      - '\Users\Public\'
+      - '.ps1'
+  condition: selection and selection_susp
+fields:
+  - ServiceName
+  - ImagePath
+  - AccountName
+falsepositives:
+  - A few legitimate apps run helper services from user paths — allowlist them; a service whose ImagePath is powershell/cmd or an AppData/Temp binary is rarely legitimate
+level: high
+# 7045 is in the System log. Where audited, EventID 4697 (Security log) is equivalent.

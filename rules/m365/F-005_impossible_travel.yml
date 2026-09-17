@@ -1,0 +1,37 @@
+# F-005 — M365 Impossible Travel (Entra ID sign-in)
+title: M365 Impossible Travel (Entra ID Sign-In)
+id: 7e1a2b3c-0d4e-4f5a-9b6c-1d2e3f4a0005
+status: experimental
+description: >
+  One account signs in from two locations too far apart to be physical travel in
+  the elapsed time. The cloud-identity twin of the Windows impossible-travel rule
+  — M365 logons never touch Windows EventID 4624, so this rides Entra sign-in
+  logs. Strong account-compromise signal for law-firm and finance tenants.
+references:
+  - https://attack.mitre.org/techniques/T1078/004/
+  - https://learn.microsoft.com/entra/identity/monitoring-health/concept-sign-in-log-activity-details
+author: Aperlock
+date: 2026-08-06
+tags:
+  - attack.defense-evasion
+  - attack.initial-access
+  - attack.persistence
+  - attack.t1078.004
+logsource:
+  product: m365
+  service: signinlogs
+detection:
+  selection:
+    ResultType: 0     # successful interactive sign-in
+  condition: selection
+fields:
+  - UserId
+  - IPAddress
+  - LocationDetails
+falsepositives:
+  - Corporate VPN, cloud proxy, or split-tunnel egress that relocates the apparent source — allowlist known corporate egress IPs and VPN ranges
+level: high
+# Impossible travel is a GEO/VELOCITY correlation (same UPN, > ~500km apart within
+# < ~4h) that Chronolith computes from GeoIP-enriched sign-ins — NOT a simple event
+# count, so there is no correlation document here. This base selection surfaces
+# successful sign-ins; the engine applies the velocity check. Requires GeoIP enrichment.

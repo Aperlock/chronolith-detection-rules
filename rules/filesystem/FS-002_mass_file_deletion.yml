@@ -1,0 +1,49 @@
+# FS-002 — Mass File Deletion on a Monitored Share
+title: Mass File Deletion on a Monitored Share
+name: mass_file_deletion
+id: 7e1a2b3c-0d4e-4f5a-9b6c-1d2e3f4a0f02
+status: experimental
+description: >
+  One user or process deletes a large number of files across a monitored share in
+  a short window — destruction of records, whether ransomware wiping, a departing
+  insider, or a compromised account. For law firms this is potential spoliation of
+  matter files: fast, high-impact, and irreversible without backups.
+references:
+  - https://attack.mitre.org/techniques/T1485/
+  - https://learn.microsoft.com/windows/security/threat-protection/auditing/event-4663
+author: Aperlock
+date: 2026-08-06
+tags:
+  - attack.impact
+  - attack.t1485
+logsource:
+  product: windows
+  service: security
+detection:
+  selection:
+    EventID: 4663
+    AccessMask|contains: '0x10000'   # DELETE
+  condition: selection
+fields:
+  - SubjectUserName
+  - ProcessName
+  - ObjectName
+falsepositives:
+  - Backup rotation, temp-file cleanup, AV quarantine, and legitimate bulk cleanup — exclude service accounts and known maintenance processes
+level: high
+# Requires "Audit File System" (4663) + DELETE SACLs on monitored shares. Ship
+# DISABLED by default until SACLs and service-account exclusions are in place.
+---
+# Threshold: same user/process deletes >= 100 files / 5 min on a monitored share.
+title: Mass File Deletion on a Monitored Share (threshold)
+id: 7e1a2b3c-0d4e-4f5a-9b6c-1d2e3f4a0f12
+status: experimental
+correlation:
+  type: event_count
+  rules:
+    - mass_file_deletion
+  group-by:
+    - SubjectUserName
+  timespan: 5m
+  condition:
+    gte: 100

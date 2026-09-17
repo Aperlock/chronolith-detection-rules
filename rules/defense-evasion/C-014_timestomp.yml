@@ -1,0 +1,38 @@
+# C-014 — File Timestomp (timestamp modification)
+title: File Timestomp
+id: c8f5a1b2-4d6e-4a7c-9b8d-0e1f2a3b0c14
+status: experimental
+description: >
+  A file's timestamps are altered to blend a dropped file into its surroundings
+  and defeat timeline analysis. The reliable signal is Sysmon EventID 2 (a process
+  changed a file's creation time); the scripted variant is PowerShell setting
+  .CreationTime / .LastWriteTime directly.
+references:
+  - https://attack.mitre.org/techniques/T1070/006/
+  - https://learn.microsoft.com/sysinternals/downloads/sysmon
+author: Aperlock
+date: 2026-08-06
+tags:
+  - attack.defense-evasion
+  - attack.t1070.006
+logsource:
+  product: windows
+detection:
+  selection_sysmon:
+    EventID: 2          # Sysmon: a process changed a file creation time
+  selection_ps:
+    CommandLine|contains:
+      - '.CreationTime ='
+      - '.LastWriteTime ='
+      - 'SetLastWriteTime'
+      - 'SetCreationTime'
+  condition: 1 of selection_*
+fields:
+  - Image
+  - TargetFilename
+  - CommandLine
+falsepositives:
+  - Backup, sync, and archive tools legitimately set timestamps; Sysmon EID 2 has benign volume — scope to unusual processes / paths
+level: medium
+# The reliable signal is Sysmon EventID 2 (requires Sysmon deployed). The PowerShell
+# variant needs 4688/Sysmon command line. Ship tuned or expect benign Sysmon-2 volume.

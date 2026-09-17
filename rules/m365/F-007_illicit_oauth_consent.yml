@@ -1,0 +1,45 @@
+# F-007 — M365: Illicit OAuth Application Consent (consent phishing)
+title: M365 OAuth Application Consent to High-Privilege Scopes
+name: m365_illicit_oauth_consent
+id: c2f7d3b1-2a45-4d8b-ae32-1b2c3d4e5f03
+status: experimental
+description: >
+  A user (or admin) grants an OAuth application consent to high-value Graph
+  scopes — mail, files, or offline access. Consent-phishing attackers register a
+  malicious app and trick a user into granting it, yielding durable token-based
+  access to mailboxes and documents that never shows up in forwarding logs. Very
+  high impact for law-firm and financial-advisory tenants.
+references:
+  - https://attack.mitre.org/techniques/T1528/
+  - https://learn.microsoft.com/defender-cloud-apps/investigate-risky-oauth
+author: Aperlock
+date: 2026-08-05
+tags:
+  - attack.credential-access
+  - attack.t1528
+logsource:
+  product: m365
+  service: audit
+detection:
+  selection_op:
+    Operation:
+      - 'Consent to application'
+      - 'Add OAuth2PermissionGrant'
+      - 'Add delegated permission grant'
+  selection_scope:
+    ModifiedProperties|contains:
+      - 'Mail.Read'
+      - 'Mail.ReadWrite'
+      - 'Files.Read.All'
+      - 'Files.ReadWrite.All'
+      - 'offline_access'
+  condition: selection_op and selection_scope
+fields:
+  - UserId
+  - ObjectId          # the app granted consent
+  - ModifiedProperties
+falsepositives:
+  - Legitimate first-party or IT-vetted apps being onboarded — maintain an
+    allowlist of approved application (client) IDs and scope this out
+level: high
+# Single occurrence — any high-privilege consent to an unvetted app is worth a look.

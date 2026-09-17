@@ -1,0 +1,35 @@
+# C-013 — Payload Decode via certutil
+title: Payload Decode via certutil
+id: c8f5a1b2-4d6e-4a7c-9b8d-0e1f2a3b0c13
+status: experimental
+description: >
+  certutil is used to decode a base64/hex-encoded file — the deobfuscation step
+  that turns a downloaded or dropped blob into a runnable executable. `certutil
+  -decode` is a signed-binary trick to avoid staging the payload in plain form,
+  and pairs with the certutil download (E-015) as a download-then-decode chain.
+references:
+  - https://attack.mitre.org/techniques/T1140/
+  - https://learn.microsoft.com/windows/security/threat-protection/auditing/event-4688
+author: Aperlock
+date: 2026-08-06
+tags:
+  - attack.defense-evasion
+  - attack.t1140
+logsource:
+  product: windows
+  category: process_creation
+detection:
+  selection:
+    Image|endswith: '\certutil.exe'
+    CommandLine|contains:
+      - '-decode'
+      - '-decodehex'
+  condition: selection
+fields:
+  - CommandLine
+  - ParentImage
+  - SubjectUserName
+falsepositives:
+  - Rare legitimate use — allowlist known scripts; a decode immediately following a certutil download is the strong chain
+level: high
+# Requires process-creation logging with command line (4688 + "Include command line", or Sysmon EID 1).

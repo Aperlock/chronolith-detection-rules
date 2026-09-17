@@ -1,0 +1,47 @@
+# F-006 — M365 Mass Mailbox Item Access (BEC reconnaissance)
+title: M365 Mass Mailbox Item Access
+name: m365_mass_mail_access
+id: 7e1a2b3c-0d4e-4f5a-9b6c-1d2e3f4a0006
+status: experimental
+description: >
+  A single account reads an unusually large volume of mailbox items in a short
+  window. Business-email-compromise actors bulk-read a target's mail to find wire
+  instructions, payment threads, and key contacts before launching fraud — a
+  high-value signal for legal and financial-advisory tenants.
+references:
+  - https://attack.mitre.org/techniques/T1114/002/
+  - https://learn.microsoft.com/purview/audit-log-activities
+author: Aperlock
+date: 2026-08-06
+tags:
+  - attack.collection
+  - attack.t1114.002
+logsource:
+  product: m365
+  service: audit
+detection:
+  selection:
+    Operation:
+      - 'MailItemsAccessed'
+      - 'FolderBind'
+  condition: selection
+fields:
+  - UserId
+  - MailboxOwnerUPN
+falsepositives:
+  - Mailbox migration/backup, e-discovery, or legitimate M365 search — exclude service accounts and known migration windows; the threshold is org-baseline sensitive and may need per-tenant tuning
+level: medium
+---
+# Threshold: one account accesses >= 500 mailbox items / 60 min.
+title: M365 Mass Mailbox Item Access (threshold)
+id: 7e1a2b3c-0d4e-4f5a-9b6c-1d2e3f4a0016
+status: experimental
+correlation:
+  type: event_count
+  rules:
+    - m365_mass_mail_access
+  group-by:
+    - UserId
+  timespan: 60m
+  condition:
+    gte: 500

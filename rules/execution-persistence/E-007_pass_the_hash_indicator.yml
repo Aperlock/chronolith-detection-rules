@@ -1,0 +1,72 @@
+# E-007 — Pass-the-Hash / Overpass-the-Hash Indicator
+title: Pass-the-Hash Indicator (NewCredentials seclogo Logon)
+id: 4f8a2c1d-6b3e-4d9a-9f2c-1a2b3c4d5e6f
+status: experimental
+description: >-
+  Flags a Windows logon carrying the source-host fingerprint of a Pass-the-Hash /
+  Overpass-the-Hash attack: a NewCredentials logon (Logon Type 9) created through the
+  seclogo logon process — the artifact that `runas /netonly` and mimikatz
+  `sekurlsa::pth` both leave behind when an operator injects alternate credentials to
+  reach the network as a different account without unlocking the local session. On the
+  source host the 4624 event records the SSP that seclogo hands the credentials to
+  (typically Negotiate, sometimes NTLM); the actual outbound authentication is then
+  replayed with the stolen hash over NTLM. For a lean SME team with a handful of admins,
+  a Type 9 seclogo logon from a normal user workstation is a strong "look here first"
+  signal: legitimate use is rare and comes from a known short list of admin/jump boxes,
+  so anything outside that list is worth a fast triage before it turns into estate-wide
+  lateral movement. This is an FP-prone signature by nature — treat it as a triage lead,
+  not a verdict.
+references:
+  - https://attack.mitre.org/techniques/T1550/002/
+  - https://learn.microsoft.com/windows/security/threat-protection/auditing/event-4624
+author: Aperlock
+date: 2026-08-05
+tags:
+  - attack.defense-evasion
+  - attack.lateral-movement
+  - attack.t1550.002
+logsource:
+  product: windows
+  service: security
+detection:
+  selection:
+    EventID: 4624
+    LogonType: 9
+    LogonProcessName: 'seclogo'
+    AuthenticationPackageName:
+      - 'Negotiate'
+      - 'NTLM'
+  filter_null_sid:
+    # The invoking (Subject) account is null on a specific noisy machine-generated
+    # NewCredentials variant; a real runas/netonly or mimikatz pth carries the
+    # operator's SID. Exclude S-1-0-0 to cut that noise.
+    SubjectUserSid: 'S-1-0-0'
+  condition: selection and not filter_null_sid
+fields:
+  - SubjectUserName
+  - SubjectUserSid
+  - TargetUserName
+  - TargetDomainName
+  - LogonProcessName
+  - AuthenticationPackageName
+  - WorkstationName
+  - IpAddress
+  - ProcessName
+falsepositives:
+  - Administrators legitimately using `runas /netonly` to reach servers or a different
+    forest/domain with alternate credentials — baseline the admin workstations/jump boxes
+    that do this and exclude them.
+  - Backup, monitoring, or deployment tooling that injects alternate network credentials
+    (some agents, schedulers, and cross-domain sync jobs use NewCredentials logons) —
+    allowlist the known service hosts/accounts.
+  - Cross-forest or workgroup-to-domain access where alternate credentials are routinely
+    supplied and NTLM is the expected fallback — common in mixed or legacy environments.
+level: medium
+# EventID 4624 requires "Audit Logon: Success", which is ON by default in the Windows
+# baseline audit policy — this rule ships ENABLED. Type 9 (NewCredentials) logons are
+# inherently rare, so volume is low even on a lean box. Tuning is exclusion-based: build
+# the allowlist of admin workstations/jump boxes and service hosts/accounts that
+# legitimately produce Type 9 seclogo logons, then filter them.
+# NOTE: the canonical mimikatz sekurlsa::pth / overpass-the-hash source artifact records
+# AuthenticationPackageName=Negotiate (NOT NTLM) — pinning this field to NTLM alone would
+# miss the attack, so both Negotiate and NTLM are matched.

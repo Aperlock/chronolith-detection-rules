@@ -1,0 +1,77 @@
+# C-007 — Windows Firewall or Tamper Protection Disabled
+title: Windows Firewall or Tamper Protection Disabled
+id: 7d3a1f92-6c4b-4e18-9a2f-1b5c8e0d4a37
+status: experimental
+description: >-
+  Detects command-line attempts to turn off host protections: disabling the Windows
+  Firewall for all profiles (netsh advfirewall / Set-NetFirewallProfile), disabling
+  Defender real-time monitoring (Set-MpPreference -DisableRealtimeMonitoring), or
+  disabling Defender tamper protection via the registry. Attackers routinely knock
+  these controls out immediately before dropping tooling, moving laterally, or
+  encrypting files, so a single occurrence is treated as high severity. For a lean
+  SME team with no 24/7 SOC, this is one of the highest-signal "someone is about to
+  do damage" events you can catch — legitimate admins rarely disable the firewall or
+  real-time protection estate-wide, and almost never tamper-protection.
+references:
+  - https://attack.mitre.org/techniques/T1562/004/
+  - https://attack.mitre.org/techniques/T1562/001/
+  - https://learn.microsoft.com/windows/security/threat-protection/auditing/event-4688
+author: Aperlock
+date: 2026-08-05
+modified: 2026-08-05
+tags:
+  - attack.defense-evasion
+  - attack.t1562.004   # firewall disable (netsh / Set-NetFirewallProfile)
+  - attack.t1562.001   # Defender real-time + tamper-protection disable
+logsource:
+  product: windows
+  category: process_creation
+detection:
+  selection_netsh_firewall_off:
+    Image|endswith: '\netsh.exe'
+    CommandLine|contains|all:
+      - 'advfirewall'
+      - 'state'
+      - 'off'
+  selection_ps_firewall_off:
+    CommandLine|contains|all:
+      - 'Set-NetFirewallProfile'
+      - 'Enabled'
+      - 'False'
+  selection_defender_realtime_off:
+    CommandLine|contains|all:
+      - 'Set-MpPreference'
+      - 'DisableRealtimeMonitoring'
+  selection_tamper_reg_off:
+    CommandLine|contains: 'TamperProtection'
+    CommandLine|contains|all:
+      - 'REG_DWORD'
+      - '/d 0'
+  condition: 1 of selection_*
+fields:
+  - CommandLine
+  - Image
+  - ParentImage
+  - User
+  - Computer
+falsepositives:
+  - IT staff intentionally reconfiguring the firewall during a maintenance window or
+    troubleshooting a connectivity issue — this is the single most common benign
+    cause on a small IT team; confirm via change ticket
+  - Endpoint management / RMM tooling (e.g. an MDM baseline push) that re-applies
+    firewall profiles; identify the parent process and account and allowlist it
+  - Security software installers that briefly toggle real-time monitoring during setup
+  - Lab/build automation images that disable the firewall as part of provisioning
+  - RE-ENABLING protection also matches — 'Set-MpPreference -DisableRealtimeMonitoring
+    $false' contains the same substrings as the disable form, so an admin turning
+    real-time monitoring back ON will fire this selection; read the $false/$true
+    argument from CommandLine before treating as malicious
+level: high
+# Requires "Audit Process Creation" (4688) AND the "Include command line in process
+# creation events" policy — command line is NOT captured by default. Ship this rule
+# DISABLED by default until command-line auditing is confirmed enabled, otherwise
+# CommandLine is empty and none of the selections match. Sysmon EventID 1 is an
+# equivalent source and carries CommandLine natively.
+# Known coverage gap (acceptable for experimental): argument-form variants such as
+# 'Set-NetFirewallProfile -Enabled 0' or '-DisableRealtimeMonitoring 1' are not
+# matched; the rule targets the common literal forms.

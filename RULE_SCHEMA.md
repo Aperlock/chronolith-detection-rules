@@ -23,12 +23,15 @@ rules/
   m365/                # Category F — Microsoft 365 / Entra ID
   network/             # Category G — network & firewall
   infrastructure/      # Category H — infrastructure & hardware telemetry
+  filesystem/          # Category FS — file & data access (share/file audit)
+  lateral-movement/    # Category LM — lateral movement (RDP, SMB, WinRM, WMI, PsExec)
 tests/                 # one <rule-id>.test.yml per rule with test cases
 ```
 
 One rule per file. Name files `<ID>_<short_slug>.yml` (e.g.
-`A-001_brute_force_single_account.yml`). IDs are `<Category letter>-<NNN>`; ask in
-your PR if you're unsure which number is free.
+`A-001_brute_force_single_account.yml`). IDs are `<Category letter>-<NNN>` — a
+single letter for A–H, `FS-<NNN>` for filesystem, `LM-<NNN>` for lateral movement.
+Ask in your PR if you're unsure which number is free.
 
 ---
 
@@ -150,6 +153,29 @@ cases:
     events:
       - { EventID: 4625, TargetUserName: jsmith, IpAddress: 10.0.0.9 }
 ```
+
+### High-count thresholds — `events_generator`
+
+Some rules only fire past a large count (e.g. 100+ file reads, 200+ file
+modifications). Hand-listing that many events is unreadable, so a case may use a
+generator instead of an explicit `events:` list:
+
+```yaml
+  - name: 100+ distinct files read in the window fires
+    should_fire: true
+    events_generator:
+      count: 120                 # how many events to synthesize
+      window_seconds: 240        # spread them evenly across this window
+      template:                  # each event; {{i}} is replaced with the index (0..count-1)
+        EventID: 5145
+        AccessMask: '0x1'
+        SubjectUserName: jsmith
+        RelativeTargetName: 'client-{{i}}/privileged-memo.docx'   # {{i}} makes each distinct
+```
+
+Use `{{i}}` wherever a field must vary per event (distinct filenames, hosts,
+accounts) so `value_count` thresholds are exercised correctly. A case uses
+either `events:` or `events_generator:`, not both.
 
 Use only synthetic/sample data. **Never** include a real customer's hostnames,
 domains, internal AD names, IPs, or usernames — use obvious placeholders

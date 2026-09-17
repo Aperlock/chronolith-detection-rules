@@ -1,0 +1,35 @@
+# E-016 — Startup Folder Persistence
+title: Startup Folder Persistence
+id: b7e4c1a2-3d5e-4f6a-8b7c-9d0e1f2a0e16
+status: experimental
+description: >
+  A file is written into a Startup folder — anything placed there auto-runs at
+  logon. A simple, durable persistence trick, especially on user workstations.
+  Legitimate software occasionally drops a startup shortcut, so the finding is an
+  executable or script (not a vendor .lnk) written by an unusual process.
+references:
+  - https://attack.mitre.org/techniques/T1547/001/
+  - https://learn.microsoft.com/windows/security/threat-protection/auditing/event-4663
+author: Aperlock
+date: 2026-08-06
+tags:
+  - attack.persistence
+  - attack.t1547.001
+logsource:
+  product: windows
+  service: security
+detection:
+  selection:
+    EventID: 4663
+    AccessMask|contains: '0x2'   # WriteData
+    ObjectName|contains: '\Start Menu\Programs\Startup'
+  condition: selection
+fields:
+  - SubjectUserName
+  - ProcessName
+  - ObjectName
+falsepositives:
+  - Installers dropping a legitimate startup shortcut — allowlist known installers; an .exe/.ps1/.bat/.vbs written to Startup by a non-installer process is the finding
+level: high
+# Requires "Audit File System" (4663) + a SACL on the Startup folders. Ship DISABLED
+# by default until those SACLs are in place.

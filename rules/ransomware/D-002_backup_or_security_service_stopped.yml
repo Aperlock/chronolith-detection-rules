@@ -1,0 +1,105 @@
+# D-002 — Backup or Security Service Stopped
+title: Backup or Security Service Stopped via Command Line
+id: 7d3a9f42-6c1e-4b0a-9e51-2f8c4a1b6d02
+status: experimental
+description: >-
+  Detects a service-control command (net stop / sc.exe stop / Stop-Service /
+  Set-Service -Status Stopped) that targets a backup, anti-virus/EDR, or database
+  service by name. Ransomware and
+  hands-on-keyboard intruders routinely kill Veeam, VSS/SQLWriter, Exchange, the
+  Defender/CrowdStrike/SentinelOne sensor, and SQL Server immediately before mass
+  encryption — stopping backups so victims cannot restore, and blinding the EDR so
+  the encryptor runs unimpeded. For a lean SME team with no 24/7 SOC, this single
+  event is often the last quiet moment before an estate-wide outage: one hit here
+  warrants an immediate look, not a threshold wait.
+references:
+  - https://attack.mitre.org/techniques/T1489/
+  - https://learn.microsoft.com/windows/security/threat-protection/auditing/event-4688
+author: Aperlock
+date: 2026-08-05
+tags:
+  - attack.impact
+  - attack.t1489
+logsource:
+  product: windows
+  category: process_creation
+detection:
+  # Service-control tooling
+  selection_tool:
+    Image|endswith:
+      - '\net.exe'
+      - '\net1.exe'
+      - '\sc.exe'
+      - '\powershell.exe'
+      - '\pwsh.exe'
+  # The stop verb, matched tightly so it cannot collide with a benign status *check*
+  # (e.g. Get-Service | Where Status -eq 'Stopped'):
+  #   ' stop '          -> net stop <svc> / sc.exe stop <svc> (verb always followed by a name)
+  #   'stop-service'    -> PowerShell Stop-Service
+  #   '-status stopped' -> PowerShell Set-Service -Status Stopped
+  selection_action:
+    CommandLine|contains:
+      - ' stop '
+      - 'stop-service'
+      - '-status stopped'
+  # A backup / AV-EDR / database service named on the command line
+  selection_target:
+    CommandLine|contains:
+      # Backup / shadow copy
+      - 'veeam'
+      - 'vss'
+      - 'sqlwriter'
+      - 'wbengine'
+      - 'sdrsvc'
+      - 'backup'
+      - 'acronis'
+      - 'memtas'
+      - 'mepocs'
+      # AV / EDR sensors
+      - 'windefend'
+      - 'sense'
+      - 'sophos'
+      - 'mssense'
+      - 'csagent'
+      - 'csfalcon'
+      - 'crowdstrike'
+      - 'sentinel'
+      - 'sepmasterservice'
+      - 'masvc'
+      - 'mcafee'
+      - 'carbonblack'
+      - 'cbdefense'
+      - 'cylance'
+      # Database / mail
+      - 'mssql'
+      - 'sqlserver'
+      - 'msexchange'
+  condition: selection_tool and selection_action and selection_target
+fields:
+  - SubjectUserName
+  - Image
+  - CommandLine
+  - ParentImage
+  - ComputerName
+falsepositives:
+  - Planned maintenance windows — an admin or patch job stopping Veeam, SQL, or
+    Exchange services before an upgrade/backup-agent update. Correlate with a change
+    ticket and the initiating account.
+  - Backup vendor installers/updaters that stop and restart their own service
+    (e.g. a Veeam or Acronis agent upgrade).
+  - EDR/AV upgrade tooling that cycles its sensor service.
+  - RMM / monitoring scripts that actually *stop* (not merely query) a backup or AV
+    service on a schedule — e.g. a maintenance runbook. A read-only status check
+    (Get-Service ... Status -eq 'Stopped') does not match after the action-verb
+    tightening, but a script that issues the stop will; allowlist that service account.
+level: high
+# Requires "Audit Process Creation" (4688) WITH command-line capture enabled
+# (Administrative Templates > System > Audit Process Creation > Include command line),
+# or Sysmon Event ID 1. Command-line-in-4688 is OFF by default — this rule ships
+# DISABLED until that policy (or Sysmon) is deployed, since the target-service match
+# lives entirely in the command line.
+#
+# Complementary signal: System log Event ID 7036 ("service entered the stopped state")
+# from the Service Control Manager catches a stop initiated outside these tools (e.g.
+# services.msc, a killed process, or a direct SCM API call) but carries no initiating
+# user/command line. Pair it with this rule where 7036 collection is available.

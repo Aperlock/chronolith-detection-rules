@@ -1,0 +1,57 @@
+# A-007 — Kerberoasting (RC4 service-ticket harvesting)
+title: Kerberoasting - RC4 Service Ticket Requests
+name: kerberoasting_rc4
+id: c2f7d3b1-2a45-4d8b-ae32-1b2c3d4e5f02
+status: experimental
+description: >
+  One account requests Kerberos service tickets (TGS) for many distinct service
+  principals using RC4 encryption. RC4 TGS tickets are crackable offline to
+  recover the service account's plaintext password — the Kerberoasting pattern.
+  Volume of distinct SPNs from a single requester in a short window is the signal.
+references:
+  - https://attack.mitre.org/techniques/T1558/003/
+  - https://learn.microsoft.com/windows/security/threat-protection/auditing/event-4769
+author: Aperlock
+date: 2026-08-05
+tags:
+  - attack.credential-access
+  - attack.t1558.003
+logsource:
+  product: windows
+  service: security
+detection:
+  selection:
+    EventID: 4769                 # a Kerberos service ticket was requested
+    TicketEncryptionType: '0x17'  # RC4-HMAC — the crackable type
+    TicketOptions: '0x40810000'   # typical forwardable/renewable request
+  filter_machine:
+    ServiceName|endswith: '$'     # exclude computer/service machine accounts
+  filter_krbtgt:
+    ServiceName: 'krbtgt'
+  filter_users:
+    TargetUserName|endswith: '$'  # exclude machine-account requesters
+  condition: selection and not 1 of filter_*
+fields:
+  - TargetUserName
+  - ServiceName
+  - IpAddress
+falsepositives:
+  - Legacy applications/service accounts that genuinely negotiate RC4 — inventory
+    and exclude them; better, raise them to AES and this quiets down on its own
+level: high
+# Requires "Audit Kerberos Service Ticket Operations" on domain controllers.
+---
+# Threshold: same requester asks for RC4 TGS to >= 5 distinct SPNs / 10 min.
+title: Kerberoasting - RC4 Service Ticket Requests (threshold)
+id: c2f7d3b1-2a45-4d8b-ae32-1b2c3d4e5f12
+status: experimental
+correlation:
+  type: value_count
+  rules:
+    - kerberoasting_rc4
+  group-by:
+    - TargetUserName
+  timespan: 10m
+  condition:
+    field: ServiceName
+    gte: 5

@@ -1,0 +1,38 @@
+# C-012 — AMSI Bypass Indicator
+title: AMSI Bypass Indicator
+id: c8f5a1b2-4d6e-4a7c-9b8d-0e1f2a3b0c12
+status: experimental
+description: >
+  A known AMSI (Antimalware Scan Interface) tampering pattern appears in a command
+  line or script block — referencing AmsiUtils / amsiInitFailed or reflectively
+  patching the AMSI context to blind in-memory script scanning before running a
+  payload. AMSI bypass almost always precedes fileless execution.
+references:
+  - https://attack.mitre.org/techniques/T1562/001/
+  - https://learn.microsoft.com/windows/security/threat-protection/auditing/event-4688
+author: Aperlock
+date: 2026-08-06
+tags:
+  - attack.defense-evasion
+  - attack.t1562.001
+logsource:
+  product: windows
+  category: process_creation
+detection:
+  selection:
+    CommandLine|contains:
+      - 'amsiInitFailed'
+      - 'AmsiUtils'
+      - 'System.Management.Automation.AmsiUtils'
+      - '[Ref].Assembly.GetType'
+  condition: selection
+fields:
+  - CommandLine
+  - ParentImage
+  - SubjectUserName
+falsepositives:
+  - Security research and red-team tooling; very rare in production
+level: high
+# Requires process-creation command line (4688 + "Include command line", or Sysmon EID 1).
+# PowerShell Script Block logging (EventID 4104) catches the in-memory variants that
+# never appear on a command line — enable it for fuller coverage.

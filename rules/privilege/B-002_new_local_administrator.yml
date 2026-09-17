@@ -1,0 +1,32 @@
+# B-002 — New Local Administrator Account
+title: New Local Administrator Account
+id: 8f2c1a4b-0e5d-4a6c-9b7e-2c3d4e5f0b02
+status: experimental
+description: >
+  An account is added to a machine's local Administrators group. Local-admin
+  persistence is a standard post-exploitation move — it survives password resets
+  and often flies under domain-level monitoring. On a workstation or member server
+  this should be rare and deliberate.
+references:
+  - https://attack.mitre.org/techniques/T1136/001/
+  - https://learn.microsoft.com/windows/security/threat-protection/auditing/event-4732
+author: Aperlock
+date: 2026-08-06
+tags:
+  - attack.persistence
+  - attack.t1136.001
+logsource:
+  product: windows
+  service: security
+detection:
+  selection:
+    EventID: 4732
+    TargetUserName: 'Administrators'
+  condition: selection
+fields:
+  - MemberName
+  - SubjectUserName
+  - ComputerName
+falsepositives:
+  - IT adding a service account or granting helpdesk escalation — allowlist dedicated admin workstations and known IT actions; unexpected hosts are the finding
+level: high

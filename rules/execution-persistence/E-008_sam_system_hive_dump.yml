@@ -1,0 +1,67 @@
+# E-008 — SAM/SYSTEM Registry Hive Dump
+title: SAM/SYSTEM Registry Hive Dump for Offline Credential Extraction
+id: d42a941c-e813-44fc-98d8-db1e97b750c0
+status: experimental
+description: >-
+  Detects a process dumping the SAM, SYSTEM, or SECURITY registry hives to a file
+  via reg.exe save/export, or copying the live SAM through esentutl or a Volume
+  Shadow Copy. These hives hold local account password hashes plus the boot key
+  needed to decrypt them; once dumped they are cracked or replayed offline, away
+  from the box. For a lean SME with a handful of shared local-admin passwords, a
+  single successful dump can hand an attacker every workstation and server at once,
+  so this fires as a high-severity single-occurrence signal — no threshold needed.
+references:
+  - https://attack.mitre.org/techniques/T1003/002/
+  - https://learn.microsoft.com/windows/security/threat-protection/auditing/event-4688
+author: Aperlock
+date: 2026-08-05
+tags:
+  - attack.credential-access
+  - attack.t1003.002
+logsource:
+  product: windows
+  category: process_creation
+detection:
+  selection_reg_verb:
+    Image|endswith: '\reg.exe'
+    CommandLine|contains:
+      - ' save '
+      - ' export '
+  selection_reg_hive:
+    CommandLine|contains:
+      - 'HKLM\SAM'
+      - 'HKLM\SYSTEM'
+      - 'HKLM\SECURITY'
+      - 'HKEY_LOCAL_MACHINE\SAM'
+      - 'HKEY_LOCAL_MACHINE\SYSTEM'
+      - 'HKEY_LOCAL_MACHINE\SECURITY'
+  selection_esentutl:
+    Image|endswith: '\esentutl.exe'
+    CommandLine|contains:
+      - '/y'
+      - '/vss'
+    CommandLine|contains|all:
+      - '\config\SAM'
+  selection_vss_copy:
+    CommandLine|contains|all:
+      - 'HarddiskVolumeShadowCopy'
+      - '\config\SAM'
+  condition: (selection_reg_verb and selection_reg_hive) or selection_esentutl or selection_vss_copy
+fields:
+  - SubjectUserName
+  - Image
+  - CommandLine
+  - ParentImage
+  - Computer
+falsepositives:
+  - Backup or imaging software that snapshots registry hives via VSS/esentutl — scope
+    to its known service account and parent process, then exclude
+  - IT staff manually exporting a hive for troubleshooting or a documented migration —
+    confirm the operator and change ticket
+  - DFIR/forensic collection tooling run by the security team itself — allowlist the
+    workstation or account that runs it
+level: high
+# Requires "Audit Process Creation" AND the "Include command line in process creation
+# events" GPO (command line is NOT recorded in 4688 by default). Without command-line
+# capture this rule cannot match; ships DISABLED by default until that auditing is on
+# (or route reg.exe/esentutl via Sysmon Event ID 1, which always carries CommandLine).

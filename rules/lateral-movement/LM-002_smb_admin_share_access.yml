@@ -1,0 +1,53 @@
+# LM-002 — SMB Administrative Share Access
+title: SMB Administrative Share Access (C$ / ADMIN$)
+name: smb_admin_share_access
+id: 9a3d5e7f-1b2c-4d3e-8a4b-5c6d7e8f0102
+status: experimental
+description: >
+  A network logon accesses a built-in administrative share (C$, ADMIN$) on another
+  host. Attackers use admin shares to move files and run tools laterally (PsExec,
+  remote copy). Legitimate use is mostly management tooling and IT — one account
+  fanning out to many hosts' C$ is the concern.
+references:
+  - https://attack.mitre.org/techniques/T1021/002/
+  - https://learn.microsoft.com/windows/security/threat-protection/auditing/event-5140
+author: Aperlock
+date: 2026-08-06
+tags:
+  - attack.lateral-movement
+  - attack.t1021.002
+logsource:
+  product: windows
+  service: security
+detection:
+  selection:
+    EventID: 5140
+    ShareName|contains:
+      - 'C$'
+      - 'ADMIN$'
+  condition: selection
+fields:
+  - SubjectUserName
+  - ShareName
+  - IpAddress
+  - ComputerName
+falsepositives:
+  - Management tooling (SCCM/Intune), backup, monitoring, and IT admin workflows legitimately hit admin shares — allowlist those accounts/hosts; the signal is an unusual account fanning out to many hosts' C$
+level: medium
+# Requires "Audit File Share" (5140). IPC$ is deliberately excluded (constant benign
+# null-session / enumeration noise).
+---
+# Threshold: one account reaches admin shares on >= 5 distinct hosts / 10 min (fan-out).
+title: SMB Administrative Share Access (fan-out threshold)
+id: 9a3d5e7f-1b2c-4d3e-8a4b-5c6d7e8f0112
+status: experimental
+correlation:
+  type: value_count
+  rules:
+    - smb_admin_share_access
+  group-by:
+    - SubjectUserName
+  timespan: 10m
+  condition:
+    field: ComputerName
+    gte: 5

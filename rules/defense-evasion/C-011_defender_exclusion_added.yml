@@ -1,0 +1,37 @@
+# C-011 — Windows Defender Exclusion Added
+title: Windows Defender Exclusion Added
+id: c8f5a1b2-4d6e-4a7c-9b8d-0e1f2a3b0c11
+status: experimental
+description: >
+  A path, extension, or process exclusion is added to Windows Defender. Attackers
+  exclude their payload directory so it runs unscanned — a quiet, high-impact
+  evasion step. Legitimate exclusions exist but should be rare, ticketed, and
+  IT-driven; exclusions of user/temp/download paths are the concern.
+references:
+  - https://attack.mitre.org/techniques/T1562/001/
+  - https://learn.microsoft.com/windows/security/threat-protection/auditing/event-4688
+author: Aperlock
+date: 2026-08-06
+tags:
+  - attack.defense-evasion
+  - attack.t1562.001
+logsource:
+  product: windows
+  category: process_creation
+detection:
+  selection_ps:
+    CommandLine|contains|all:
+      - 'MpPreference'
+      - 'Exclusion'
+  selection_reg:
+    Image|endswith: '\reg.exe'
+    CommandLine|contains: '\Windows Defender\Exclusions'
+  condition: 1 of selection_*
+fields:
+  - CommandLine
+  - ParentImage
+  - SubjectUserName
+falsepositives:
+  - IT adding a legitimate exclusion for a line-of-business app — should be ticketed; exclusions covering user, Temp, or Downloads paths are the finding
+level: high
+# Requires process-creation logging with command line (4688 + "Include command line", or Sysmon EID 1).

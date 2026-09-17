@@ -1,0 +1,37 @@
+# F-004 — M365 Privileged Admin Role Assigned
+title: M365 Privileged Admin Role Assigned
+id: 7e1a2b3c-0d4e-4f5a-9b6c-1d2e3f4a0004
+status: experimental
+description: >
+  An account is added to a high-privilege Entra/M365 role (Global, Exchange, or
+  Security Administrator). Attackers elevate a compromised account for durable,
+  tenant-wide access. These should be rare and ticketed, so any occurrence is
+  critical.
+references:
+  - https://attack.mitre.org/techniques/T1098/003/
+  - https://learn.microsoft.com/entra/identity/monitoring-health/reference-audit-activities
+author: Aperlock
+date: 2026-08-06
+tags:
+  - attack.persistence
+  - attack.privilege-escalation
+  - attack.t1098.003
+logsource:
+  product: m365
+  service: audit
+detection:
+  selection:
+    Operation: 'Add member to role'
+    ModifiedProperties|contains:
+      - 'Global Administrator'
+      - 'Company Administrator'   # legacy internal name for Global Admin in the audit log
+      - 'Exchange Administrator'
+      - 'Security Administrator'
+  condition: selection
+fields:
+  - UserId
+  - ObjectId
+  - ModifiedProperties
+falsepositives:
+  - Authorized IT provisioning — should be rare and documented; an unexpected grantor or grantee is the finding
+level: critical

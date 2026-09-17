@@ -1,0 +1,31 @@
+# B-005 — System Audit Policy Changed
+title: System Audit Policy Changed
+id: 8f2c1a4b-0e5d-4a6c-9b7e-2c3d4e5f0b05
+status: experimental
+description: >
+  Windows audit policy was modified. Attackers disable audit subcategories to
+  blind detection before acting. Any change to audit configuration on a server
+  should be reviewed against the baseline — especially categories being turned off.
+references:
+  - https://attack.mitre.org/techniques/T1562/002/
+  - https://learn.microsoft.com/windows/security/threat-protection/auditing/event-4719
+author: Aperlock
+date: 2026-08-06
+tags:
+  - attack.defense-evasion
+  - attack.t1562.002
+logsource:
+  product: windows
+  service: security
+detection:
+  selection:
+    EventID: 4719
+  condition: selection
+fields:
+  - SubjectUserName
+  - CategoryId
+  - SubcategoryId
+  - AuditPolicyChanges
+falsepositives:
+  - GPO refresh or a planned hardening change — correlate with change tickets; a subcategory being DISABLED (not enabled) is the concern
+level: high

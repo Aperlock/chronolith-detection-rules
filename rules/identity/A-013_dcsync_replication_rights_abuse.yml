@@ -1,0 +1,81 @@
+# A-013 — DCSync: Directory Replication Rights Abuse
+title: DCSync - Directory Replication Rights Abuse
+id: 63501551-099c-44f5-a977-0d1530873f8c
+status: experimental
+description: >-
+  Detects a non-domain-controller account exercising Active Directory replication
+  extended rights (DS-Replication-Get-Changes / -All), the signature of a DCSync
+  attack in which an adversary impersonates a DC and asks a real DC to replicate
+  secrets — pulling password hashes for any account, including krbtgt, without
+  touching a DC's disk or running code on it. Legitimately, only domain controller
+  computer accounts (and a small set of sync services like Entra/Azure AD Connect)
+  ever request these rights. For a lean SME team with one or two DCs, a single
+  human or service account performing this operation means an attacker already has
+  Domain Admin-equivalent access and is harvesting the entire domain's credentials
+  — this is a full-domain-compromise, break-glass event, so a single occurrence is
+  treated as critical.
+references:
+  - https://attack.mitre.org/techniques/T1003/006/
+  - https://learn.microsoft.com/windows/security/threat-protection/auditing/event-4662
+author: Aperlock
+date: 2026-08-05
+tags:
+  - attack.credential-access
+  - attack.t1003.006
+logsource:
+  product: windows
+  service: security
+detection:
+  selection:
+    EventID: 4662
+    ObjectServer: 'DS'
+  replication_right:
+    Properties|contains:
+      # DS-Replication-Get-Changes
+      - '1131f6aa-9c07-11d1-f79f-00c04fc2dcd2'
+      # DS-Replication-Get-Changes-All
+      - '1131f6ad-9c07-11d1-f79f-00c04fc2dcd2'
+  filter_dc_machine_account:
+    # Domain controller computer accounts legitimately replicate; they log on
+    # as MACHINE$. Excluding the trailing '$' scopes the alert to user/service
+    # accounts. A compromised DC account is out of scope for this rule by design.
+    # CAVEAT: group Managed Service Accounts (gMSA) also have a SamAccountName
+    # ending in '$', so a gMSA-backed sync service is excluded here — and an
+    # attacker who compromises such a gMSA can DCSync under this exclusion.
+    # Monitor privileged gMSAs separately; do not treat this rule as covering them.
+    SubjectUserName|endswith: '$'
+  filter_system:
+    SubjectUserName:
+      - 'ANONYMOUS LOGON'
+      - 'LOCAL SERVICE'
+      - 'NETWORK SERVICE'
+  condition: selection and replication_right and not 1 of filter_*
+fields:
+  - SubjectUserName
+  - SubjectDomainName
+  - SubjectUserSid
+  - SubjectLogonId
+  - ObjectName
+  - Properties
+  - AccessMask
+falsepositives:
+  - Entra Connect / Azure AD Connect directory synchronization service accounts
+    (commonly MSOL_<hex> or AAD_<hex>, or a custom-named ADSync account) — these
+    hold replication rights by design and DCSync every sync cycle (~30 min). The
+    default MSOL_/AAD_ account is an ordinary USER account (it does NOT end in
+    '$'), so in any hybrid-Entra tenant this rule WILL fire continuously until you
+    identify your sync account and add it to filter_system. Treat that as a
+    required day-one onboarding step, not an optional tweak.
+  - Third-party AD backup, migration, password-sync (e.g. Azure AD Password
+    Protection proxy), or IAM tools that were deliberately delegated Get-Changes
+    rights — allowlist the specific known service account only.
+  - Promotion of a new domain controller (dcpromo) before the new DC's machine
+    account is recognized — verify against a planned change window.
+level: critical
+# Requires "Audit Directory Service Access" (Success) — EventID 4662. This
+# subcategory is OFF by default on member servers; it is enabled by the Default
+# Domain Controllers Policy on DCs, and 4662 for replication rights is only
+# emitted on domain controllers. Confirm the DCs forward Security logs to
+# Chronolith before relying on this rule. Enabling 4662 Success domain-wide is
+# high-volume; scope the audit to DCs. This rule matches only the replication
+# GUIDs, so rule evaluation stays cheap, but plan DC log-forwarding volume.

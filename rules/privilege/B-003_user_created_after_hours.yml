@@ -1,0 +1,34 @@
+# B-003 — User Account Created Outside Business Hours
+title: User Account Created Outside Business Hours
+id: 8f2c1a4b-0e5d-4a6c-9b7e-2c3d4e5f0b03
+status: experimental
+description: >
+  A new user account is created after hours or on a weekend. Attackers create
+  backdoor accounts for persistence and prefer off-hours when nobody's watching.
+  Legitimate account creation is a daytime, ticketed activity.
+references:
+  - https://attack.mitre.org/techniques/T1136/001/
+  - https://learn.microsoft.com/windows/security/threat-protection/auditing/event-4720
+author: Aperlock
+date: 2026-08-06
+tags:
+  - attack.persistence
+  - attack.t1136.001
+logsource:
+  product: windows
+  service: security
+detection:
+  selection:
+    EventID: 4720
+  condition: selection
+fields:
+  - TargetUserName
+  - SubjectUserName
+  - ComputerName
+falsepositives:
+  - After-hours IT work such as emergency new-hire setup — should carry a ticket
+level: medium
+# The "outside business hours" escalation is an engine-side temporal condition:
+# Chronolith flags 4720 events landing after ~6pm / before ~7am / on weekends and
+# raises severity. Base Sigma has no hour-of-day operator, so this selection matches
+# all account creations and the engine applies the time window.

@@ -1,0 +1,71 @@
+# C-003 — Event Log Service Stopped or Disabled
+title: Windows Event Log Service Stopped
+name: event_log_service_stopped
+id: 7a1c9e42-3b8d-4f6a-9c21-5d8e4b2f10a3
+status: experimental
+description: >-
+  Detects the Windows Event Log service (EventLog) entering the stopped state,
+  reported by Service Control Manager as System event 7036. While it is down no
+  Security, System, or Application events are recorded — exactly the gap an
+  intruder creates before ransomware, credential theft, or data staging. This is
+  the "passive" variant of T1562.002: it needs no audit-policy prerequisite and
+  catches a stop performed via Services.msc, WMI, or an API where no command line
+  is captured. It is deliberately scoped as a medium-severity visibility signal,
+  not a confirmed-malicious one, because the same 7036 'stopped' is emitted on
+  every clean shutdown/reboot. Pair it with the companion process_creation rule
+  (below) and with reboot correlation to separate an attacker turning off the
+  recorder from routine patching.
+references:
+  - https://attack.mitre.org/techniques/T1562/002/
+  - https://learn.microsoft.com/windows/security/threat-protection/auditing/event-7036
+author: Aperlock
+date: 2026-08-05
+tags:
+  - attack.defense-evasion
+  - attack.t1562.002
+logsource:
+  product: windows
+  service: system
+detection:
+  selection:
+    Provider_Name: Service Control Manager
+    EventID: 7036
+    param1: 'Windows Event Log'
+    param2: 'stopped'
+  condition: selection
+fields:
+  - Computer
+  - Provider_Name
+  - EventID
+  - param1
+  - param2
+falsepositives:
+  - Planned OS shutdown or restart — the Event Log service stops as part of a
+    clean shutdown and emits a 'stopped' 7036. This is the dominant source of
+    noise. Suppress by correlating with a shutdown/reboot marker (System 1074
+    initiated shutdown, or 6006 'the Event log service was stopped') within the
+    same minute on the same host; a bare 7036 'stopped' with NO reboot marker is
+    the interesting case.
+  - Windows servicing / cumulative-update installs that cycle core services
+    during a maintenance window — scope to your known patch schedule.
+  - Administrator or support troubleshooting that intentionally restarts the
+    Event Log service. Confirm it was a human on a change ticket, not an
+    unexpected process.
+level: medium
+# Severity is deliberately MEDIUM, not high. A 7036 'stopped' for the Event Log
+# service fires on EVERY clean reboot, so shipping it high floods a lean SME on
+# every Patch-Tuesday cycle. Treat it as a "visibility lost — why?" signal and
+# raise severity in your alerting only when it is NOT accompanied by a
+# reboot/shutdown marker (System 1074 / 6006) on the same host in the same minute.
+#
+# Reliability caveat: because the Event Log service is the mechanism that records
+# System-log events, SCM cannot always write this 7036 while the service is going
+# down, so it can be MISSED on a hard/forced stop. Do not rely on it as the sole
+# signal. The canonical System-log markers for the service state are 6005 (started)
+# and 6006 (stopped), written by the service itself. This rule is the zero-prereq
+# safety net (works with no audit policy enabled); the higher-fidelity active-tamper
+# coverage (4688 'sc config eventlog start= disabled', Set-Service -StartupType
+# Disabled, 'auditpol /clear', 'wevtutil sl /e:false', 'net stop eventlog') lives in
+# a separate process_creation rule, since a Chronolith rule carries one logsource
+# per file. Those command-line selections require "Include command line in process
+# creation events" (off by default) and ship disabled-by-default there.

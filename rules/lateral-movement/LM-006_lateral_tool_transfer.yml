@@ -1,0 +1,45 @@
+# LM-006 — Lateral Tool Transfer to a Remote Admin Share
+title: Lateral Tool Transfer to a Remote Administrative Share
+id: 9a3d5e7f-1b2c-4d3e-8a4b-5c6d7e8f0106
+status: experimental
+description: >
+  An executable or script is written to another host's administrative share
+  (C$/ADMIN$) — staging a tool on a target before remote execution, the copy half
+  of the PsExec/WMI pattern. Writing a .exe/.dll/.ps1 to a remote C$ is rarely
+  legitimate outside managed software deployment.
+references:
+  - https://attack.mitre.org/techniques/T1570/
+  - https://learn.microsoft.com/windows/security/threat-protection/auditing/event-5145
+author: Aperlock
+date: 2026-08-06
+tags:
+  - attack.lateral-movement
+  - attack.t1570
+logsource:
+  product: windows
+  service: security
+detection:
+  selection:
+    EventID: 5145
+    ShareName|contains:
+      - 'C$'
+      - 'ADMIN$'
+    AccessMask|contains: '0x2'    # WriteData
+  selection_ext:
+    RelativeTargetName|endswith:
+      - '.exe'
+      - '.dll'
+      - '.ps1'
+      - '.bat'
+      - '.cmd'
+  condition: selection and selection_ext
+fields:
+  - SubjectUserName
+  - ShareName
+  - RelativeTargetName
+  - IpAddress
+falsepositives:
+  - Managed software deployment (SCCM/Intune) and IT admin file staging — allowlist those accounts/hosts; an ad-hoc executable write to a remote C$ from a workstation is the finding
+level: high
+# Requires "Audit Detailed File Share" (5145). Ship DISABLED by default until admin-share
+# auditing is on and deployment/service accounts are allowlisted.
