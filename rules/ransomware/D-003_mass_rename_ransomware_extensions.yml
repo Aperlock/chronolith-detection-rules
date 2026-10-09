@@ -75,7 +75,7 @@ falsepositives:
     storage onto a monitored share in bulk.
   - Security or DLP agents that quarantine files by re-writing them with an encrypted
     container extension — exclude the agent's process/account.
-level: high
+level: critical
 ---
 # Threshold: one user touching many DISTINCT ransom-marked files in a short window.
 title: Mass Rename to Known Ransomware Extensions by One User (threshold)
